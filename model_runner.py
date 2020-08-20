@@ -10,6 +10,7 @@ import random
 
 def train(model, train_inputs, train_ground_truth, batch_size=10):
     """
+
     This runs through one epoch of the training process. It takes as input:
 
     @param model: the model object we're trying to train.
@@ -26,11 +27,13 @@ def train(model, train_inputs, train_ground_truth, batch_size=10):
     """
 
     # Loop through all the batches.
-    for i in range(int(train_inputs.shape[0]/batch_size)):
+    for i in range(1, int(train_inputs.shape[0]/batch_size)):
         # Grab the input and corresponding ground truth batches.
         batch_start = i*batch_size
         batch_end = (i+1)*batch_size
-        input = train_inputs[batch_start:batch_end]
+        batched_in_prev = train_inputs[batch_start-1:batch_end-1]
+        batched_in_curr = train_inputs[batch_start:batch_end]
+        input = np.concatenate([batched_in_prev, batched_in_curr], axis=-1)
         ground_truth = train_ground_truth[batch_start:batch_end]
 
         # Start a "gradient tape".
@@ -82,12 +85,14 @@ def test(model, test_inputs, test_ground_truth, batch_size=10):
     This computes the average loss across the testing sample.
     """
     total_loss = 0
-    for i in range(int(test_inputs.shape[0]/batch_size)):
+    for i in range(1, int(test_inputs.shape[0]/batch_size)):
         # Grab the input and corresponding ground truth. TODO: we can batch
         # this if we want to make it faster.
         batch_start = i*batch_size
         batch_end = (i+1)*batch_size
-        input = test_inputs[batch_start:batch_end]
+        batched_in_prev = test_inputs[batch_start-1:batch_end-1]
+        batched_in_curr = test_inputs[batch_start:batch_end]
+        input = np.concatenate([batched_in_prev, batched_in_curr], axis=-1)
         ground_truth = test_ground_truth[batch_start:batch_end]
 
         # Run the model on the input to get the predicted output.
@@ -100,12 +105,14 @@ def test(model, test_inputs, test_ground_truth, batch_size=10):
 def test_wav(model, test_inputs, out_path, batch_size=10):
     output = np.copy(test_inputs.numpy())
     input = np.copy(output)
-    for i in range(int(test_inputs.shape[0]/batch_size)):
+    for i in range(1, int(test_inputs.shape[0]/batch_size)):
         # Grab the input and corresponding ground truth. TODO: we can batch
         # this if we want to make it faster.
         batch_start = i*batch_size
         batch_end = (i+1)*batch_size
-        batched_input = test_inputs[batch_start:batch_end]
+        batched_in_prev = test_inputs[batch_start-1:batch_end-1]
+        batched_in_curr = test_inputs[batch_start:batch_end]
+        batched_input = np.concatenate([batched_in_prev, batched_in_curr], axis=-1)
 
         # Run the model on the input to get the predicted output.
         output[batch_start:batch_end] = model(batched_input)
@@ -144,7 +151,7 @@ def main():
     model = AudioDeviceModel()
 
     # Train the model for some number of epochs, and time how long it takes.
-    epochs = 1
+    epochs = 3
     start = time.time()
 
     for _ in range(epochs):
