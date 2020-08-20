@@ -7,6 +7,14 @@ from scipy.signal import lfilter, butter
 
 SAMPLES_PER_DATUM = 128
 
+
+def hpf(signal): 
+	temp = signal[0]
+	for i in range(1, signal.size):
+		temp2 = signal[i]
+		signal[i] = signal[i] - (.95 * temp)
+		temp = temp2
+
 def get_data(file_directory):
 	"""
 
@@ -45,6 +53,7 @@ def get_data(file_directory):
 
 				# filter distorted signal
 				# TODO: apply a HP filter to df_data (the distorted file's data)
+				hpf(df_data)
 
 				# add to list of samples after splitting on samples_per_datum
 				clean_signal.extend(np.split(cf_data, SAMPLES_PER_DATUM))
