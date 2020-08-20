@@ -5,9 +5,10 @@ from audio_device_model import AudioDeviceModel
 import os
 import sys
 import time
+from audio_utils import hpf
 
 
-def train(model, train_inputs, train_ground_truth):
+def train(model, train_inputs, train_ground_truth, batch_size=10):
     """
     This runs through one epoch of the training process. It takes as input:
 
@@ -18,16 +19,19 @@ def train(model, train_inputs, train_ground_truth):
     @param train_ground_truth: vector of all the corresponding ground truth
         outputs to use when computing the loss.
 
-    Doesn't return anything, since we're just modifying the model object.
+    @param batch_size: how many examples to use to compute the gradients.
+
+    @return: nothing, since we're just modifying the model object.
 
     """
 
-    # Loop through all the examples.
-    for i in range(train_inputs.shape[0]):
-        # Grab the input and corresponding ground truth. This would usually be
-        # batched but for example I'm just grabbing one input.
-        input = train_inputs[i]
-        ground_truth = train_ground_truth[i]
+    # Loop through all the batches.
+    for i in range(int(train_inputs.shape[0]/batch_size)):
+        # Grab the input and corresponding ground truth batches.
+        batch_start = i*batch_size
+        batch_end = (i+1)*batch_size
+        input = train_inputs[batch_start:batch_end]
+        ground_truth = train_ground_truth[batch_start:batch_end]
 
         # Start a "gradient tape".
         #
@@ -39,6 +43,13 @@ def train(model, train_inputs, train_ground_truth):
             # derivatives of the output w.r.t. every parameter of the model
             # are stored.
             model_prediction = model(input)
+
+            # Apply in-place hpf.
+            # TODO: should the hpf be something we apply in the loss
+            # function? I think that could actually make sense, since it's
+            # kind of like a part of the loss function.
+            model_prediction = hpf(model_prediction)
+
             # Compute the loss. Since this is also happening in the gradient
             # tape scope, it now has recorded all the derivatives of the loss
             # w.r.t. the model parameters.
@@ -69,13 +80,20 @@ def test(model, test_inputs, test_ground_truth):
     """
     total_loss = 0
     for i in range(train_inputs.shape[0]):
-        # Grab the input and corresponding ground truth. This would usually be
-        # batched but for example I'm just grabbing one input.
+        # Grab the input and corresponding ground truth. TODO: we can batch
+        # this if we want to make it faster.
         input = test_inputs[i]
         ground_truth = test_ground_truth[i]
 
         # Run the model on the input to get the predicted output.
         model_prediction = model(input)
+
+        # Apply in-place hpf.
+        # TODO: should the hpf be something we apply in the loss
+        # function? I think that could actually make sense, since it's
+        # kind of like a part of the loss function.
+        model_prediction = hpf(model_prediction)
+
         # Compute the loss.
         total_loss += model.loss(model_prediction, ground_truth)
     return total_loss / train_inputs.shape[0]
@@ -84,8 +102,19 @@ def main():
     """
     Main function... so where we actually run everything from.
     """
+
+    filepath = sys.argv[1]
+
+    print("Getting and preprocessing audio data from path " + filepath)
+    start = time.time()
     # Get the data using preprocess.py.
-    train_inputs, train_ground_truth, test_inputs, test_ground_truth = get_data("some/filepath/butts/")
+    train_inputs, train_ground_truth, test_inputs, test_ground_truth = get_data(filepath)
+    print("train inputs shape: ", train_inputs.shape)
+    print("train ground truth shape: ", train_ground_truth.shape)
+    print("test inputs shape: ", test_inputs.shape)
+    print("test ground truth shape: ", test_ground_truth.shape)
+    end = time.time()
+    print("Done getting audio data, took", (end - start) / 60, "minutes.")
 
     # Create the model object. See audio_device_model.py.
     model = AudioDeviceModel()
