@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+from audio_utils import hpf
 
 """
 
@@ -54,10 +55,14 @@ class AudioDeviceModel(tf.keras.Model):
         # This is the model's loss function, given a vector of predictions and
         # a corresponding vector of ground truths.
 
+        # High pass both signals.
+        hpf_ground_truth = ground_truth
+        hpf_prediction = prediction
+
         # This is the "error to signal ratio" they describe in the paper.
         # It's just a normalized L2 loss.
         # Avoid dividing by zero.
-        if (tf.reduce_sum(ground_truth ** 2) == 0.0):
+        if (tf.reduce_sum(hpf_ground_truth ** 2) == 0.0):
             # TODO: is this the right thing to do though?
-            return tf.reduce_sum((prediction - ground_truth) ** 2)
-        return tf.reduce_sum((prediction - ground_truth) ** 2) / tf.reduce_sum(ground_truth ** 2)
+            return tf.reduce_sum((hpf_prediction - hpf_ground_truth) ** 2)
+        return tf.reduce_sum((hpf_prediction - hpf_ground_truth) ** 2) / tf.reduce_sum(hpf_ground_truth ** 2)

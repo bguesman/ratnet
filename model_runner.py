@@ -6,7 +6,6 @@ import os
 import sys
 import time
 import random
-from audio_utils import hpf
 
 
 def train(model, train_inputs, train_ground_truth, batch_size=10):
@@ -44,12 +43,6 @@ def train(model, train_inputs, train_ground_truth, batch_size=10):
             # derivatives of the output w.r.t. every parameter of the model
             # are stored.
             model_prediction = model(input)
-
-            # Apply in-place hpf.
-            # TODO: should the hpf be something we apply in the loss
-            # function? I think that could actually make sense, since it's
-            # kind of like a part of the loss function.
-            model_prediction = hpf(model_prediction)
 
             # Compute the loss. Since this is also happening in the gradient
             # tape scope, it now has recorded all the derivatives of the loss
@@ -100,15 +93,34 @@ def test(model, test_inputs, test_ground_truth, batch_size=10):
         # Run the model on the input to get the predicted output.
         model_prediction = model(input)
 
-        # Apply in-place hpf.
-        # TODO: should the hpf be something we apply in the loss
-        # function? I think that could actually make sense, since it's
-        # kind of like a part of the loss function.
-        model_prediction = hpf(model_prediction)
-
         # Compute the loss.
         total_loss += model.loss(model_prediction, ground_truth)
     return total_loss / test_inputs.shape[0]
+
+def test_wav(model, test_inputs, out_path, batch_size=10):
+    output = np.copy(test_inputs.numpy())
+    input = np.copy(output)
+    for i in range(int(test_inputs.shape[0]/batch_size)):
+        # Grab the input and corresponding ground truth. TODO: we can batch
+        # this if we want to make it faster.
+        batch_start = i*batch_size
+        batch_end = (i+1)*batch_size
+        batched_input = test_inputs[batch_start:batch_end]
+
+        # Run the model on the input to get the predicted output.
+        output[batch_start:batch_end] = model(batched_input)
+
+    # Flatten the output.
+    output = np.clip(np.reshape(output, (-1)), -1.0, 1.0)
+    input = np.reshape(input, (-1))
+
+    # Convert to wav.
+    output = output * 32768.0
+    input = input * 32768.0
+    output = output.astype(np.int16, order='C')
+    input = input.astype(np.int16, order='C')
+    wavio.write(out_path + "_wet.wav", output, 44100)
+    wavio.write(out_path + "_dry.wav", input, 44100)
 
 def main():
     """
@@ -145,8 +157,12 @@ def main():
     test_loss = test(model, test_inputs, test_ground_truth)
     print("FINAL LOSS ON TEST DATA:", test_loss)
 
+    # Write out a wav file.
+    test_wav(model, test_inputs, "test")
+    print("Wrote out wav to: test_dry.wav and test_wet.wav")
+
     # Save the weights for later use.
-    # model.save_weights('model_weights/model_weights', save_format='tf')
+    model.save_weights('model_weights/model_weights', save_format='tf')
 
 if __name__ == '__main__':
    main()

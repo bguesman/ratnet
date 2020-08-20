@@ -4,7 +4,6 @@ import os
 import wavio
 from sklearn.model_selection import train_test_split
 from scipy.signal import lfilter, butter
-from audio_utils import hpf
 
 SAMPLES_PER_DATUM = 128
 
@@ -55,11 +54,6 @@ def get_data(file_directory):
 				cf_data = cf_data.astype(np.float32, order='C') / 32768.0
 				df_data = df_data.astype(np.float32, order='C') / 32768.0
 
-				# apply a HP filter to df_data (the distorted file's data)
-				# expand dimension of distorted data to fake batching
-				df_data = hpf(np.expand_dims(df_data, axis=0))
-				df_data = tf.reshape(df_data, cf_data.shape)
-
 				# add to list of samples after splitting on samples_per_datum
 				# also exclude the last element just in case it's short
 				# via [:-1] slice
@@ -72,10 +66,10 @@ def get_data(file_directory):
 				distorted_test_signal.extend(dist_splits[split_index:])
 
 	# Test it's working
-	# wavio.write("xtrain1.wav", X_train[11], 20500)
-	# wavio.write("ytrain1.wav", y_train[11], 20500)
-	# wavio.write("xtest1.wav", X_test[11], 20500)
-	# wavio.write("ytest1.wav", y_test[11], 20500)
+	# wavio.write("xtrain1.wav", X_train[11], 44100)
+	# wavio.write("ytrain1.wav", y_train[11], 44100)
+	# wavio.write("xtest1.wav", X_test[11], 44100)
+	# wavio.write("ytest1.wav", y_test[11], 44100)
 
 	return tf.convert_to_tensor(clean_train_signal), tf.convert_to_tensor(distorted_train_signal), \
 		tf.convert_to_tensor(clean_test_signal), tf.convert_to_tensor(distorted_test_signal)
