@@ -33,40 +33,31 @@ class AudioDeviceModel(tf.keras.Model):
 
         # Brad: here's where the real bulk of the model definition happens.
         # We define a member variable for each layer in the network. This
-        # example just has 2 two dimensional convolutional layers. For our
-        # model, we'll have a member variable for each 1D dilated convolution
-        # layer.
+        # example just has 2 linear layers.
 
-        # TODO: do these automatically include a bias term?
-        self.conv1 = tf.keras.layers.Conv2D(
-            filters=2,      # <-- How many channels do we output.
-            kernel_size=5,  # <-- How big is our filter kernel.
-            strides=2,      # <-- How big is our stride.
-            padding='same', # <-- "Same" or "Zero" padding?
-            activation=tf.keras.layers.LeakyReLU(alpha=0.2) # <-- Non-linear function applied after the convolution.
-        )
-        self.conv2 = tf.keras.layers.Conv2D(filters=4,
-            kernel_size=5,
-            strides=2,
-            padding='same',
-            activation=tf.keras.layers.LeakyReLU(alpha=0.2)
-        )
+        self.d1 = tf.keras.layers.Dense(128, activation='relu')
+        self.d2 = tf.keras.layers.Dense(128)
 
     @tf.function
     def call(self, input):
         # This function actually runs the model on a given input.
         # Because we use the layers API, this is super easy.
 
-        # Apply convolutional layer 1 to the input.
-        conv1 = self.conv1(input)
-        # Apply convolutional layer 2 to the output of convolutional layer 1.
-        conv2 = self.conv2(conv1)
+        # Apply linear layer 1 to the input.
+        d1 = self.d1(input)
+        # Apply linear layer 2 to the output of linear layer 1.
+        d2 = self.d2(d1)
         # Return the final result.
-        return conv2
+        return d2
 
     def loss(self, prediction, ground_truth):
         # This is the model's loss function, given a vector of predictions and
         # a corresponding vector of ground truths.
 
-        # Here's an example of L2 loss.
-        tf.reduce_sum((prediction - ground_truth) ** 2)
+        # This is the "error to signal ratio" they describe in the paper.
+        # It's just a normalized L2 loss.
+        # Avoid dividing by zero.
+        if (tf.reduce_sum(ground_truth ** 2) == 0.0):
+            # TODO: is this the right thing to do though?
+            return tf.reduce_sum((prediction - ground_truth) ** 2)
+        return tf.reduce_sum((prediction - ground_truth) ** 2) / tf.reduce_sum(ground_truth ** 2)

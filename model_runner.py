@@ -5,6 +5,7 @@ from audio_device_model import AudioDeviceModel
 import os
 import sys
 import time
+import random
 from audio_utils import hpf
 
 
@@ -74,16 +75,27 @@ def train(model, train_inputs, train_ground_truth, batch_size=10):
         # contiguous, since our model has state? If we store state in the
         # model, will this fuck up that state and fuck up the results?
 
-def test(model, test_inputs, test_ground_truth):
+        if (i % 200 == 0):
+            # Random test.
+            test_size = 100 * batch_size
+            random_index = int(random.uniform(0, 1) * (train_inputs.shape[0]-test_size))
+            test_inputs = train_inputs[random_index:random_index+test_size]
+            test_ground_truth = train_ground_truth[random_index:random_index+test_size]
+            test_result = test(model, test_inputs, test_ground_truth, batch_size)
+            print("LOSS on iteration ", i, ": ", test_result)
+
+def test(model, test_inputs, test_ground_truth, batch_size=10):
     """
     This computes the average loss across the testing sample.
     """
     total_loss = 0
-    for i in range(train_inputs.shape[0]):
+    for i in range(int(test_inputs.shape[0]/batch_size)):
         # Grab the input and corresponding ground truth. TODO: we can batch
         # this if we want to make it faster.
-        input = test_inputs[i]
-        ground_truth = test_ground_truth[i]
+        batch_start = i*batch_size
+        batch_end = (i+1)*batch_size
+        input = test_inputs[batch_start:batch_end]
+        ground_truth = test_ground_truth[batch_start:batch_end]
 
         # Run the model on the input to get the predicted output.
         model_prediction = model(input)
@@ -96,7 +108,7 @@ def test(model, test_inputs, test_ground_truth):
 
         # Compute the loss.
         total_loss += model.loss(model_prediction, ground_truth)
-    return total_loss / train_inputs.shape[0]
+    return total_loss / test_inputs.shape[0]
 
 def main():
     """
@@ -120,7 +132,7 @@ def main():
     model = AudioDeviceModel()
 
     # Train the model for some number of epochs, and time how long it takes.
-    epochs = 5
+    epochs = 1
     start = time.time()
 
     for _ in range(epochs):
