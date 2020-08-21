@@ -30,40 +30,52 @@ class AudioDeviceModel(tf.keras.Model):
         # need to be a global variable defined outside the training loop.
         # But setting it up here makes sure we can't make a mistake that
         # breaks the optimizer's state maintenance.
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=3e-3)
 
         # Brad: here's where the real bulk of the model definition happens.
         # We define a member variable for each layer in the network. This
         # example just has 2 linear layers.
 
-        self.c1 = tf.keras.layers.Conv1D(filters=1, kernel_size=2, dilation_rate=1, padding="same")
-        self.lr1 = tf.keras.layers.LeakyReLU()
-        self.c2 = tf.keras.layers.Conv1D(filters=1, kernel_size=2, dilation_rate=4, padding="same")
-        self.lr2 = tf.keras.layers.LeakyReLU()
-        self.c3 = tf.keras.layers.Conv1D(filters=1, kernel_size=2, dilation_rate=8, padding="same")
-        self.lr3 = tf.keras.layers.LeakyReLU()
-        self.c4 = tf.keras.layers.Conv1D(filters=1, kernel_size=2, dilation_rate=32, padding="same")
-        self.lr4 = tf.keras.layers.LeakyReLU()
-        self.c5 = tf.keras.layers.Conv1D(filters=1, kernel_size=2, dilation_rate=128, padding="same")
-        self.d1 = tf.keras.layers.Dense(128);
+        self.numConvolutionalLayers = 10;
+        self.c = []
+        for i in range(self.numConvolutionalLayers):
+            self.c.append(tf.keras.layers.Conv1D(filters=1, kernel_size=2, dilation_rate=2**i, padding="causal"))
+
+        # Since activations have no learnable parameters, I think we only
+        # need one that we can reuse?
+        self.lr = tf.keras.layers.LeakyReLU()
+
+        # TODO: this dense layer should actually be a conv1d with a kernel_size
+        # of 5 and dilation rate of 128? It just needs to mix the vectors.
+        # self.d1 = tf.keras.layers.Dense(128);
 
     @tf.function
     def call(self, input):
         # This function actually runs the model on a given input.
         # Because we use the layers API, this is super easy.
 
-        # Apply conv1d layer 1 to the input.
-        c1 = self.c1(tf.expand_dims(input, axis=1))
-        # Apply conv1d layer 2 to the output of conv1d layer 1.
-        c2 = self.c2(self.lr1(c1))
-        # Apply conv1d layer 3 to the output of conv1d layer 2.
-        c3 = self.c3(self.lr2(c2))
-        # Apply conv1d layer 4 to the output of conv1d layer 3.
-        c4 = self.c4(self.lr3(c3))
-        # Apply conv1d layer 4 to the output of conv1d layer 3.
-        c5 = self.c5(self.lr4(c4))
-        # Return the final result.
-        return tf.squeeze(self.d1(c1 + c2 + c3 + c4 + c5))
+        # Our input is shape [batch_size, 128]. But conv1D expects a
+        # 3D tensor, where the last dimension is the number of channels.
+        # We only have one channel, so we need to use expand_dims to
+        # add a 3rd dimension that's just length 1 to the input.
+        # The following gives us a tensor of size [batch_size, 128, 1].
+        input = tf.expand_dims(input, axis=2)
+
+        # Accumulator variable that we'll add each layer output to.
+        accumulator = tf.zeros(input.shape)
+        for i in range(self.numConvolutionalLayers):
+            # Apply convolutional layer i
+            layer_output = self.c[i](input)
+            # Add the result to the total output of the network. This is a
+            # "skip connection".
+            accumulator += layer_output
+            # Apply non-linearity and set this to the input for the next layer.
+            input = self.lr(layer_output)
+
+        # Squeeze the singleton channel dimension out of the tensor and take
+        # just the last 128 samples so the output shape is [batch_size, 256]
+        result = (tf.squeeze(accumulator))[:,-512:]
+        return result
 
     def loss(self, prediction, ground_truth):
         # This is the model's loss function, given a vector of predictions and

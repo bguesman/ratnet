@@ -5,7 +5,7 @@ import wavio
 from sklearn.model_selection import train_test_split
 from scipy.signal import lfilter, butter
 
-SAMPLES_PER_DATUM = 128
+SAMPLES_PER_DATUM = 512
 
 def get_data(file_directory):
 	"""

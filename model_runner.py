@@ -8,7 +8,7 @@ import time
 import random
 
 
-def train(model, train_inputs, train_ground_truth, batch_size=10):
+def train(model, train_inputs, train_ground_truth, batch_size=5):
     """
 
     This runs through one epoch of the training process. It takes as input:
@@ -80,7 +80,7 @@ def train(model, train_inputs, train_ground_truth, batch_size=10):
             test_result = test(model, test_inputs, test_ground_truth, batch_size)
             print("LOSS on iteration ", i, ": ", test_result)
 
-def test(model, test_inputs, test_ground_truth, batch_size=10):
+def test(model, test_inputs, test_ground_truth, batch_size=5):
     """
     This computes the average loss across the testing sample.
     """
@@ -102,7 +102,7 @@ def test(model, test_inputs, test_ground_truth, batch_size=10):
         total_loss += model.loss(model_prediction, ground_truth)
     return total_loss / test_inputs.shape[0]
 
-def test_wav(model, test_inputs, out_path, batch_size=10):
+def test_wav(model, test_inputs, out_path, batch_size=5):
     output = np.copy(test_inputs.numpy())
     input = np.copy(output)
     for i in range(1, int(test_inputs.shape[0]/batch_size)):
@@ -151,7 +151,7 @@ def main():
     model = AudioDeviceModel()
 
     # Train the model for some number of epochs, and time how long it takes.
-    epochs = 3
+    epochs = 2
     start = time.time()
 
     for _ in range(epochs):
