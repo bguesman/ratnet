@@ -1,0 +1,23 @@
+Just a place to put down ideas.
+
+- For modeling more complex effects: can we make the architecture more like the
+circuit? For a tape delay, for instance, can we have our architecture have a
+symbolic tape, tape reel, and input and output gain stage?
+
+-For modeling time-based effects, can we hard code an internal clock parameter
+into the network? Can we make this clock parameterizable to capture analog
+error?
+
+-Also for time-based effects, can we require a feedback buffer fed into the
+network?
+
+-Could it be more efficient to directly optimize a FIR filter with a sine
+sweep, and then train the network to perform non-linear corrections? Would
+that allow us to use a smaller network? Such an FIR would need to be
+parameterizable by the effect controls. Does that thing even exist?
+
+-Could we perform certain operations in the frequency domain? Would this
+improve results and would it allow us to reduce the complexity of the
+network?
+
+-Can we implement this on the GPU? How parallelizable is this?
