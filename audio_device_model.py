@@ -30,20 +30,29 @@ class AudioDeviceModel(tf.keras.Model):
         # need to be a global variable defined outside the training loop.
         # But setting it up here makes sure we can't make a mistake that
         # breaks the optimizer's state maintenance.
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=3e-3)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=2e-3)
 
         # Brad: here's where the real bulk of the model definition happens.
         # We define a member variable for each layer in the network. This
         # example just has 2 linear layers.
 
         self.numConvolutionalLayers = 10;
+        self.io = []
         self.c = []
         for i in range(self.numConvolutionalLayers):
-            self.c.append(tf.keras.layers.Conv1D(filters=1, kernel_size=2, dilation_rate=2**i, padding="causal"))
+            # Convolutional layer.
+            self.c.append(tf.keras.layers.Conv1D(filters=8, kernel_size=3, dilation_rate=2**i, padding="causal"))
+            # IO mixer (convolutional layer with kernel size 1)
+            if (i != self.numConvolutionalLayers - 1):
+                # Last kernel has no input.
+                self.io.append(tf.keras.layers.Conv1D(filters=8, kernel_size=1, padding="causal"))
 
         # Since activations have no learnable parameters, I think we only
         # need one that we can reuse?
-        self.lr = tf.keras.layers.LeakyReLU()
+        self.lr = tf.keras.layers.ReLU()
+
+        # Linear mixer (convolutional layer with kernel size 1).
+        self.mixer = tf.keras.layers.Conv1D(filters=1, kernel_size=1, padding="causal")
 
         # TODO: this dense layer should actually be a conv1d with a kernel_size
         # of 5 and dilation rate of 128? It just needs to mix the vectors.
@@ -62,19 +71,26 @@ class AudioDeviceModel(tf.keras.Model):
         input = tf.expand_dims(input, axis=2)
 
         # Accumulator variable that we'll add each layer output to.
-        accumulator = tf.zeros(input.shape)
+        accumulator = []
         for i in range(self.numConvolutionalLayers):
             # Apply convolutional layer i
             layer_output = self.c[i](input)
             # Add the result to the total output of the network. This is a
             # "skip connection".
-            accumulator += layer_output
-            # Apply non-linearity and set this to the input for the next layer.
-            input = self.lr(layer_output)
+            accumulator.append(layer_output)
+            if (i != self.numConvolutionalLayers - 1):
+                # Only compute input if there's a next layer to feed it to.
+                # Apply non-linearity and blend between the output and input
+                # via a 1x1 convolution.
+                layer_output_nonlinear = self.lr(layer_output)
+                io_channels = tf.concat([layer_output_nonlinear, input], axis=2)
+                input = self.io[i](io_channels)
 
         # Squeeze the singleton channel dimension out of the tensor and take
         # just the last 128 samples so the output shape is [batch_size, 256]
-        result = (tf.squeeze(accumulator))[:,-512:]
+        mixer_channels = tf.concat(accumulator, axis=2)
+        mixed = self.mixer(mixer_channels)
+        result = (tf.squeeze(mixed))[:,-1024:]
         return result
 
     def loss(self, prediction, ground_truth):

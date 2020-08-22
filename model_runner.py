@@ -71,13 +71,13 @@ def train(model, train_inputs, train_ground_truth, batch_size=5):
         # contiguous, since our model has state? If we store state in the
         # model, will this fuck up that state and fuck up the results?
 
-        if (i % 200 == 0):
+        if (i == 1 or i % 200 == 0):
             # Random test.
-            test_size = 100 * batch_size
+            test_size = 500 * batch_size
             random_index = int(random.uniform(0, 1) * (train_inputs.shape[0]-test_size))
             test_inputs = train_inputs[random_index:random_index+test_size]
             test_ground_truth = train_ground_truth[random_index:random_index+test_size]
-            test_result = test(model, test_inputs, test_ground_truth, batch_size)
+            test_result = test(model, test_inputs, test_ground_truth, 500)
             print("LOSS on iteration ", i, ": ", test_result)
 
 def test(model, test_inputs, test_ground_truth, batch_size=5):
@@ -102,7 +102,8 @@ def test(model, test_inputs, test_ground_truth, batch_size=5):
         total_loss += model.loss(model_prediction, ground_truth)
     return total_loss / test_inputs.shape[0]
 
-def test_wav(model, test_inputs, out_path, batch_size=5):
+def test_wav(model, test_inputs, test_ground_truth, out_path, batch_size=5):
+    output_gt = np.copy(test_ground_truth.numpy())
     output = np.copy(test_inputs.numpy())
     input = np.copy(output)
     for i in range(1, int(test_inputs.shape[0]/batch_size)):
@@ -118,16 +119,20 @@ def test_wav(model, test_inputs, out_path, batch_size=5):
         output[batch_start:batch_end] = model(batched_input)
 
     # Flatten the output.
-    output = np.clip(np.reshape(output, (-1)), -1.0, 1.0)
+    output = np.reshape(output, (-1))
     input = np.reshape(input, (-1))
+    output_gt = np.reshape(output_gt, (-1))
 
     # Convert to wav.
     output = output * 32768.0
+    output_gt = output_gt * 32768.0
     input = input * 32768.0
     output = output.astype(np.int16, order='C')
+    output_gt = output_gt.astype(np.int16, order='C')
     input = input.astype(np.int16, order='C')
     wavio.write(out_path + "_wet.wav", output, 44100)
     wavio.write(out_path + "_dry.wav", input, 44100)
+    wavio.write(out_path + "_gt.wav", output_gt, 44100)
 
 def main():
     """
@@ -151,7 +156,7 @@ def main():
     model = AudioDeviceModel()
 
     # Train the model for some number of epochs, and time how long it takes.
-    epochs = 2
+    epochs = 1
     start = time.time()
 
     for _ in range(epochs):
@@ -165,7 +170,7 @@ def main():
     print("FINAL LOSS ON TEST DATA:", test_loss)
 
     # Write out a wav file.
-    test_wav(model, test_inputs, "test")
+    test_wav(model, test_inputs, test_ground_truth, "test")
     print("Wrote out wav to: test_dry.wav and test_wet.wav")
 
     # Save the weights for later use.
