@@ -83,8 +83,8 @@ class AudioDeviceModel(tf.keras.Model):
                 # Apply non-linearity and blend between the output and input
                 # via a 1x1 convolution.
                 layer_output_nonlinear = self.lr(layer_output)
-                io_channels = tf.concat([layer_output_nonlinear, input], axis=2)
-                input = self.io[i](io_channels)
+                #io_channels = tf.concat([layer_output_nonlinear, input], axis=2)
+                input = self.io[i](io_channels) + input
 
         # Squeeze the singleton channel dimension out of the tensor and take
         # just the last 128 samples so the output shape is [batch_size, 256]
