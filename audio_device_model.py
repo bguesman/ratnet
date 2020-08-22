@@ -73,18 +73,18 @@ class AudioDeviceModel(tf.keras.Model):
         # Accumulator variable that we'll add each layer output to.
         accumulator = []
         for i in range(self.numConvolutionalLayers):
-            # Apply convolutional layer i
+            # Apply convolutional layer i and non-linearity
             layer_output = self.c[i](input)
+            layer_output_nonlinear = self.lr(layer_output)
             # Add the result to the total output of the network. This is a
             # "skip connection".
-            accumulator.append(layer_output)
+            accumulator.append(layer_output_nonlinear)
             if (i != self.numConvolutionalLayers - 1):
                 # Only compute input if there's a next layer to feed it to.
                 # Apply non-linearity and blend between the output and input
                 # via a 1x1 convolution.
-                layer_output_nonlinear = self.lr(layer_output)
                 #io_channels = tf.concat([layer_output_nonlinear, input], axis=2)
-                input = self.io[i](io_channels) + input
+                input = self.io[i](layer_output_nonlinear) + input
 
         # Squeeze the singleton channel dimension out of the tensor and take
         # just the last 128 samples so the output shape is [batch_size, 256]
