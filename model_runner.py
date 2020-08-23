@@ -8,7 +8,7 @@ import time
 import random
 
 
-def train(model, train_inputs, train_ground_truth, batch_size=5):
+def train(model, train_inputs, train_ground_truth, batch_size=32):
     """
 
     This runs through one epoch of the training process. It takes as input:
@@ -70,17 +70,16 @@ def train(model, train_inputs, train_ground_truth, batch_size=5):
         # track of how it's doing. TODO: I think this chunk needs to be
         # contiguous, since our model has state? If we store state in the
         # model, will this fuck up that state and fuck up the results?
-
-        if (i == 1 or i % 200 == 0):
+        if (i == 1 or i % 10 == 0):
             # Random test.
-            test_size = 500 * batch_size
+            test_size = 100 * batch_size
             random_index = int(random.uniform(0, 1) * (train_inputs.shape[0]-test_size))
             test_inputs = train_inputs[random_index:random_index+test_size]
             test_ground_truth = train_ground_truth[random_index:random_index+test_size]
             test_result = test(model, test_inputs, test_ground_truth, 500)
             print("LOSS on iteration ", i, ": ", test_result)
 
-def test(model, test_inputs, test_ground_truth, batch_size=5):
+def test(model, test_inputs, test_ground_truth, batch_size=32):
     """
     This computes the average loss across the testing sample.
     """
@@ -100,9 +99,9 @@ def test(model, test_inputs, test_ground_truth, batch_size=5):
 
         # Compute the loss.
         total_loss += model.loss(model_prediction, ground_truth)
-    return total_loss / test_inputs.shape[0]
+    return total_loss / float(int(test_inputs.shape[0]/batch_size))
 
-def test_wav(model, test_inputs, test_ground_truth, out_path, batch_size=5):
+def test_wav(model, test_inputs, test_ground_truth, out_path, batch_size=32):
     output_gt = np.copy(test_ground_truth.numpy())
     output = np.copy(test_inputs.numpy())
     input = np.copy(output)
@@ -156,10 +155,11 @@ def main():
     model = AudioDeviceModel()
 
     # Train the model for some number of epochs, and time how long it takes.
-    epochs = 1
+    epochs = 10
     start = time.time()
 
-    for _ in range(epochs):
+    for i in range(epochs):
+        print("EPOCH ", i)
         train(model, train_inputs, train_ground_truth)
 
     end = time.time()

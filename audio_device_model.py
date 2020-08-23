@@ -30,7 +30,7 @@ class AudioDeviceModel(tf.keras.Model):
         # need to be a global variable defined outside the training loop.
         # But setting it up here makes sure we can't make a mistake that
         # breaks the optimizer's state maintenance.
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=2e-3)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=5e-4)
 
         # Brad: here's where the real bulk of the model definition happens.
         # We define a member variable for each layer in the network. This
@@ -52,7 +52,7 @@ class AudioDeviceModel(tf.keras.Model):
         self.lr = tf.keras.layers.ReLU()
 
         # Linear mixer (convolutional layer with kernel size 1).
-        self.mixer = tf.keras.layers.Conv1D(filters=1, kernel_size=1, padding="causal")
+        self.mixer = tf.keras.layers.Conv1D(filters=1, kernel_size=1, padding="same")
 
         # TODO: this dense layer should actually be a conv1d with a kernel_size
         # of 5 and dilation rate of 128? It just needs to mix the vectors.
@@ -90,7 +90,7 @@ class AudioDeviceModel(tf.keras.Model):
         # just the last 128 samples so the output shape is [batch_size, 256]
         mixer_channels = tf.concat(accumulator, axis=2)
         mixed = self.mixer(mixer_channels)
-        result = (tf.squeeze(mixed))[:,-1024:]
+        result = (tf.squeeze(mixed))[:,-2048:]
         return result
 
     def loss(self, prediction, ground_truth):
