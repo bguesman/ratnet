@@ -5,9 +5,7 @@ import wavio
 from sklearn.model_selection import train_test_split
 from scipy.signal import lfilter, butter
 
-SAMPLES_PER_DATUM = 2048
-
-def get_data(file_directory):
+def get_data(file_directory, frame_size, receptive_field):
 	"""
 
 	Brad: This is where we should load the data from the file and preprocess
@@ -19,10 +17,8 @@ def get_data(file_directory):
 
 	"""
 
-	clean_train_signal = []
-	clean_test_signal = []
-	distorted_train_signal = []
-	distorted_test_signal = []
+	clean_signal = []
+	dist_signal = []
 	for clean_file_path in os.listdir(file_directory):
 		if clean_file_path.endswith("_clean.wav"):
 			# find corresponding _distorted file
@@ -42,12 +38,16 @@ def get_data(file_directory):
 				cf_data = cf.data.flatten()
 				df_data = df.data.flatten()
 
-				# shorten distorted file to match clean file
+				# make files same length just in case they are somehow different
 				df_data = df_data[:cf_data.shape[0]]
+				cf_data = cf_data[:df_data.shape[0]]
 
 				# create padding
-				np.pad(cf_data, (0, cf_data.size % SAMPLES_PER_DATUM), 'constant', constant_values=(0, 0))
-				np.pad(df_data, (0, df_data.size % SAMPLES_PER_DATUM), 'constant', constant_values=(0, 0))
+				# pad clean and distorted data at the end with frame size
+				cf_data = np.pad(cf_data, (0, cf_data.size % frame_size), 'constant', constant_values=(0, 0))
+				df_data = np.pad(df_data, (0, df_data.size % frame_size), 'constant', constant_values=(0, 0))
+				# pad clean beginning to match receptive field
+				cf_data = np.pad(cf_data, (receptive_field, 0), 'constant', constant_values=(0, 0))
 
 				# convert to normalized float arrays
 				# TODO: this fails on non-16-bit bit depths
@@ -55,15 +55,12 @@ def get_data(file_directory):
 				df_data = df_data.astype(np.float32, order='C') / 32768.0
 
 				# add to list of samples after splitting on samples_per_datum
-				# also exclude the last element just in case it's short
-				# via [:-1] slice
-				clean_splits = np.array_split(cf_data, cf_data.shape[0]/SAMPLES_PER_DATUM)[:-1]
-				dist_splits = np.array_split(df_data, df_data.shape[0]/SAMPLES_PER_DATUM)[:-1]
-				split_index = int(len(clean_splits)*0.9)
-				clean_train_signal.extend(clean_splits[:split_index])
-				clean_test_signal.extend(clean_splits[split_index:])
-				distorted_train_signal.extend(dist_splits[:split_index])
-				distorted_test_signal.extend(dist_splits[split_index:])
+				# TODO: idk how to do this without using a list comprehension
+				clean_splits = np.array([cf_data[i*128:receptive_field+(i+1)*128] for i in range(int((cf_data.shape[0]-receptive_field)/frame_size))])
+				dist_splits = np.array_split(df_data, df_data.shape[0]/frame_size)
+
+				clean_signal.extend(clean_splits)
+				dist_signal.extend(dist_splits)
 
 	# Test it's working
 	# wavio.write("xtrain1.wav", X_train[11], 44100)
@@ -71,5 +68,11 @@ def get_data(file_directory):
 	# wavio.write("xtest1.wav", X_test[11], 44100)
 	# wavio.write("ytest1.wav", y_test[11], 44100)
 
-	return tf.convert_to_tensor(clean_train_signal), tf.convert_to_tensor(distorted_train_signal), \
-		tf.convert_to_tensor(clean_test_signal), tf.convert_to_tensor(distorted_test_signal)
+	# We can use the sklearn split now. We'll shuffle ourselves.
+	# That way we can actually write out the data to a wav file
+	# and make sense of it if we want to.
+	X_train, X_test, y_train, y_test = train_test_split(clean_signal,
+		dist_signal, test_size=0.25, shuffle=False)
+
+	return tf.convert_to_tensor(X_train), tf.convert_to_tensor(y_train), \
+		tf.convert_to_tensor(X_test), tf.convert_to_tensor(y_test)

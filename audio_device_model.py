@@ -30,7 +30,10 @@ class AudioDeviceModel(tf.keras.Model):
         # need to be a global variable defined outside the training loop.
         # But setting it up here makes sure we can't make a mistake that
         # breaks the optimizer's state maintenance.
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=5e-4)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
+
+        # How many samples we are trying to predict at once.
+        self.frame_size = 128
 
         # Brad: here's where the real bulk of the model definition happens.
         # We define a member variable for each layer in the network. This
@@ -90,7 +93,7 @@ class AudioDeviceModel(tf.keras.Model):
         # just the last 128 samples so the output shape is [batch_size, 256]
         mixer_channels = tf.concat(accumulator, axis=2)
         mixed = self.mixer(mixer_channels)
-        result = (tf.squeeze(mixed))[:,-2048:]
+        result = (tf.squeeze(mixed))[:,-self.frame_size:]
         return result
 
     def loss(self, prediction, ground_truth):
