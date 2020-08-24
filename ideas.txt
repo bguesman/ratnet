@@ -21,3 +21,14 @@ improve results and would it allow us to reduce the complexity of the
 network?
 
 -Can we implement this on the GPU? How parallelizable is this?
+
+
+
+Notes so far:
+-We need varied data. Not much of it, but varied. Loss is about quadruple on
+guitars the network hasn't seen.
+  -It may be that we just need quieter data in there? The set I recorded for
+  current use is mostly just shredding because I assumed quiet playing was bad.
+  -Or maybe something like 3 guitars and 2 basses instead of just 1 guitar
+  and 1 bass.
+-We need to train this on a cloud machine with a GPU.

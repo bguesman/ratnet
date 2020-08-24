@@ -129,6 +129,9 @@ def main():
     mode = sys.argv[1]
     filepath = sys.argv[2]
 
+    print("Working directory: ", os.getcwd())
+    print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+
     print("Getting and preprocessing audio data from path " + filepath)
     start = time.time()
     # Get the data using preprocess.py.
