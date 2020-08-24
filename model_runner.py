@@ -159,6 +159,8 @@ def main():
             X = (train_inputs.numpy())[shuffle_order,:]
             y = (train_ground_truth.numpy())[shuffle_order,:]
             train(model, X, y)
+            now = time.time()
+            print("Been training for ", (now - start) / 60 , " minutes.")
 
         end = time.time()
         print("Done training, took", (end - start) / 60, "minutes.")
@@ -181,6 +183,8 @@ def main():
             X = (train_inputs.numpy())[shuffle_order,:]
             y = (train_ground_truth.numpy())[shuffle_order,:]
             train(model, X, y)
+            now = time.time()
+            print("Been training for ", (now - start) / 60 , " minutes.")
 
         end = time.time()
         print("Done training, took", (end - start) / 60, "minutes.")
