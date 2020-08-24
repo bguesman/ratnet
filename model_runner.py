@@ -148,7 +148,7 @@ def main():
 
     if mode == "TRAIN":
         # Train the model for some number of epochs, and time how long it takes.
-        epochs = 5
+        epochs = int(sys.argv[3])
         start = time.time()
 
         for i in range(epochs):
@@ -170,7 +170,7 @@ def main():
         model.load_weights('model_weights/model_weights')
         print("Done.")
         # Train the model for some number of epochs, and time how long it takes.
-        epochs = 15
+        epochs = int(sys.argv[3])
         start = time.time()
 
         for i in range(epochs):
