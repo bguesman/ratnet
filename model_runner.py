@@ -128,22 +128,9 @@ def main():
 
     mode = sys.argv[1]
     filepath = sys.argv[2]
-    device = sys.argv[3]
 
     print("Working directory: ", os.getcwd())
-
-    # Setup TPU.
-    if (device == 'TPU'):
-        resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu='grpc://' + os.environ['COLAB_TPU_ADDR'])
-        tf.config.experimental_connect_to_cluster(resolver)
-        # This is the TPU initialization code that has to be at the beginning.
-        tf.tpu.experimental.initialize_tpu_system(resolver)
-        print("All devices: ", tf.config.list_logical_devices('TPU'))
-    elif (device == 'GPU'):
-        print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
-    else:
-        print("device must be one of <GPU, TPU>")
-        return
+    print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
     print("Getting and preprocessing audio data from path " + filepath)
     start = time.time()
