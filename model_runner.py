@@ -128,9 +128,22 @@ def main():
 
     mode = sys.argv[1]
     filepath = sys.argv[2]
+    device = sys.argv[3]
 
     print("Working directory: ", os.getcwd())
-    print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+
+    # Setup TPU.
+    if (device == 'TPU'):
+        resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu='grpc://' + os.environ['COLAB_TPU_ADDR'])
+        tf.config.experimental_connect_to_cluster(resolver)
+        # This is the TPU initialization code that has to be at the beginning.
+        tf.tpu.experimental.initialize_tpu_system(resolver)
+        print("All devices: ", tf.config.list_logical_devices('TPU'))
+    elif (device == 'GPU'):
+        print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+    else:
+        print("device must be one of <GPU, TPU>")
+        return
 
     print("Getting and preprocessing audio data from path " + filepath)
     start = time.time()
@@ -148,7 +161,7 @@ def main():
 
     if mode == "TRAIN":
         # Train the model for some number of epochs, and time how long it takes.
-        epochs = int(sys.argv[3])
+        epochs = int(sys.argv[4])
         start = time.time()
 
         for i in range(epochs):
@@ -170,7 +183,7 @@ def main():
         model.load_weights('model_weights/model_weights')
         print("Done.")
         # Train the model for some number of epochs, and time how long it takes.
-        epochs = int(sys.argv[3])
+        epochs = int(sys.argv[4])
         start = time.time()
 
         for i in range(epochs):
