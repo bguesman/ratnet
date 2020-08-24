@@ -162,6 +162,28 @@ def main():
 
         # Save the weights for later use.
         model.save_weights('model_weights/model_weights', save_format='tf')
+    elif mode == "LOAD-AND-TRAIN":
+        print("Loading model weights...")
+        model.load_weights('model_weights/model_weights')
+        print("Done.")
+        # Train the model for some number of epochs, and time how long it takes.
+        epochs = 15
+        start = time.time()
+
+        for i in range(epochs):
+            print("EPOCH ", i)
+            shuffle_order = list(range(train_inputs.shape[0]))
+            random.shuffle(shuffle_order)
+            #shuffle_order = tf.convert_to_tensor(shuffle_order, dtype=tf.int64)
+            X = (train_inputs.numpy())[shuffle_order,:]
+            y = (train_ground_truth.numpy())[shuffle_order,:]
+            train(model, X, y)
+
+        end = time.time()
+        print("Done training, took", (end - start) / 60, "minutes.")
+
+        # Save the weights for later use.
+        model.save_weights('model_weights/model_weights', save_format='tf')
     elif mode == "TEST":
         print("Loading model weights...")
         model.load_weights('model_weights/model_weights')
