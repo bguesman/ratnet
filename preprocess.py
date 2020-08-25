@@ -56,7 +56,7 @@ def get_train_test_data(file_directory, frame_size, receptive_field):
 
 				# add to list of samples after splitting on samples_per_datum
 				# TODO: idk how to do this without using a list comprehension
-				clean_splits = np.array([cf_data[i*128:receptive_field+(i+1)*128] for i in range(int((cf_data.shape[0]-receptive_field)/frame_size))])
+				clean_splits = np.array([cf_data[i*frame_size:receptive_field+(i+1)*frame_size] for i in range(int((cf_data.shape[0]-receptive_field)/frame_size))])
 				dist_splits = np.array_split(df_data, df_data.shape[0]/frame_size)
 
 				clean_signal.extend(clean_splits)
@@ -92,6 +92,6 @@ def get_run_data(file_path, frame_size, receptive_field):
 
 	# add to list of samples after splitting on samples_per_datum
 	# TODO: idk how to do this without using a list comprehension
-	clean_splits = np.array([cf_data[i*128:receptive_field+(i+1)*128] for i in range(int((cf_data.shape[0]-receptive_field)/frame_size))])
+	clean_splits = np.array([cf_data[i*frame_size:receptive_field+(i+1)*frame_size] for i in range(int((cf_data.shape[0]-receptive_field)/frame_size))])
 
 	return clean_splits
