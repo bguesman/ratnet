@@ -112,7 +112,7 @@ def test_wav(model, test_inputs, out_path, batch_size=32):
     output = np.reshape(output, (-1))
 
     # Convert to wav.
-    output = output * 32768.0
+    output = np.clip(output, -1.0, 1.0) * 32768.0
     output = output.astype(np.int16, order='C')
     wavio.write(out_path + "_wet.wav", output, 44100)
 
@@ -122,8 +122,12 @@ def main():
     """
 
     # TODO: turn this into an argparse template.
+    if (len(sys.argv) < 3):
+        print('usage: python model_runner.py <mode> <filepath> <num epochs>')
+
     mode = sys.argv[1]
     filepath = sys.argv[2]
+
     if mode not in ['TRAIN', 'LOAD-AND-TRAIN', 'TEST', 'RUN']:
         print('mode must be one of <TRAIN, LOAD-AND-TRAIN, TEST, RUN>')
         return
@@ -141,7 +145,7 @@ def main():
         print("Getting and preprocessing audio data from path " + filepath)
         start = time.time()
         # Get the data using preprocess.py.
-        run_data = get_run_data(filepath, 128, 2047)
+        run_data = get_run_data(filepath, model.frame_size, model.R)
         end = time.time()
         print("Done getting audio data, took", (end - start) / 60, "minutes.")
     else:
@@ -167,18 +171,15 @@ def main():
         # Train the model for some number of epochs, and time how long it takes.
         epochs = int(sys.argv[3])
         start = time.time()
-
         for i in range(epochs):
             print("EPOCH ", i)
             shuffle_order = list(range(train_inputs.shape[0]))
             random.shuffle(shuffle_order)
-            #shuffle_order = tf.convert_to_tensor(shuffle_order, dtype=tf.int64)
             X = (train_inputs.numpy())[shuffle_order,:]
             y = (train_ground_truth.numpy())[shuffle_order,:]
             train(model, X, y)
             now = time.time()
             print("Been training for ", (now - start) / 60 , " minutes.")
-
         end = time.time()
         print("Done training, took", (end - start) / 60, "minutes.")
 
@@ -189,16 +190,16 @@ def main():
         # Write out a wav file.
         print("Processing file...")
         start = time.time()
-        test_wav(model, run_data, "test", 512)
+        test_wav(model, run_data, "test", 1024)
         end = time.time()
-        data_length_in_minutes = (run_data.shape[0] * 128) / (44100 * 60)
+        data_length_in_minutes = (run_data.shape[0] * model.frame_size) / (44100 * 60)
         processing_time_in_minutes = (end-start)/60
         print("Done. Took ", processing_time_in_minutes, " minutes.")
         print("This is ", data_length_in_minutes/processing_time_in_minutes, "x realtime.")
         print("Wrote out wav to test_wet.wav")
     else:
         # Test the model.
-        test_loss = test(model, test_inputs, test_ground_truth, 512)
+        test_loss = test(model, test_inputs, test_ground_truth, 1024)
         print("FINAL LOSS ON TEST DATA:", test_loss)
 
 if __name__ == '__main__':

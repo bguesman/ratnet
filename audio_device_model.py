@@ -16,50 +16,42 @@ class AudioDeviceModel(tf.keras.Model):
         super(AudioDeviceModel, self).__init__()
         ######^^^ DO NOT CHANGE ^^^##################
 
-        # Brad: here's an example of what the member variables might look
-        # like for a model.
-
-        # Brad: we define the optimizer we want to use to train the model.
-        #
-        # Theoretically, we could do this outside the model, in
-        # "model-runner.py". But it's good to have it set up in here because
-        # optimization algorithms like Adam maintain state across training
-        # examples (just like, "how fast should I be descending right now").
-        #
-        # Basically, if we set it up outside of the model, it would
-        # need to be a global variable defined outside the training loop.
-        # But setting it up here makes sure we can't make a mistake that
-        # breaks the optimizer's state maintenance.
+        # Define the optimizer we want to use to train the model.
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
         # How many samples we are trying to predict at once.
         self.frame_size = 128
 
-        # Brad: here's where the real bulk of the model definition happens.
-        # We define a member variable for each layer in the network. This
-        # example just has 2 linear layers.
+        # Set the parameters for each convolutional layer.
+        self.d = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+        self.k = [3 for _ in self.d]
+        self.chan = [8 for _ in self.d]
 
-        self.numConvolutionalLayers = 10
+        # Compute the receptive field.
+        self.R = sum(d * k for d, k in zip(self.d, self.k)) + 1
+
+        # Layer input mixers.
         self.io = []
+        # Convolutional layers.
         self.c = []
-        for i in range(self.numConvolutionalLayers):
+
+        for i in range(len(self.d)):
             # Convolutional layer.
-            self.c.append(tf.keras.layers.Conv1D(filters=8, kernel_size=3, dilation_rate=2**i, padding="causal"))
-            # IO mixer (convolutional layer with kernel size 1)
-            if (i != self.numConvolutionalLayers - 1):
-                # Last kernel has no input.
-                self.io.append(tf.keras.layers.Conv1D(filters=8, kernel_size=1, padding="causal"))
+            self.c.append(tf.keras.layers.Conv1D(filters=self.chan[i],
+                kernel_size=self.k[i], dilation_rate=self.d[i], padding="causal"))
+            # IO mixer (convolutional layer with kernel size 1). Final
+            # layer does not need one.
+            if (i != len(self.d) - 1):
+                self.io.append(tf.keras.layers.Conv1D(filters=self.chan[i],
+                    kernel_size=1, padding="causal"))
 
         # Since activations have no learnable parameters, I think we only
         # need one that we can reuse?
         self.lr = tf.keras.layers.ReLU()
 
         # Linear mixer (convolutional layer with kernel size 1).
-        self.mixer = tf.keras.layers.Conv1D(filters=1, kernel_size=1, padding="same")
-
-        # TODO: this dense layer should actually be a conv1d with a kernel_size
-        # of 5 and dilation rate of 128? It just needs to mix the vectors.
-        # self.d1 = tf.keras.layers.Dense(128);
+        self.mixer = tf.keras.layers.Conv1D(filters=1, kernel_size=1,
+            padding="same")
 
     @tf.function
     def call(self, input):
@@ -75,14 +67,14 @@ class AudioDeviceModel(tf.keras.Model):
 
         # Accumulator variable that we'll add each layer output to.
         accumulator = []
-        for i in range(self.numConvolutionalLayers):
+        for i in range(len(self.c)):
             # Apply convolutional layer i and non-linearity
             layer_output = self.c[i](input)
             layer_output_nonlinear = self.lr(layer_output)
             # Add the result to the total output of the network. This is a
             # "skip connection".
             accumulator.append(layer_output_nonlinear)
-            if (i != self.numConvolutionalLayers - 1):
+            if (i != len(self.c) - 1):
                 # Only compute input if there's a next layer to feed it to.
                 # Apply non-linearity and blend between the output and input
                 # via a 1x1 convolution.
