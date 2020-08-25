@@ -192,7 +192,7 @@ def main():
         test_wav(model, run_data, "test", 512)
         end = time.time()
         data_length_in_minutes = (run_data.shape[0] * 128) / (44100 * 60)
-        processing_time_in_minutes = start-end/60
+        processing_time_in_minutes = (end-start)/60
         print("Done. Took ", processing_time_in_minutes, " minutes.")
         print("This is ", data_length_in_minutes/processing_time_in_minutes, "x realtime.")
         print("Wrote out wav to test_wet.wav")
