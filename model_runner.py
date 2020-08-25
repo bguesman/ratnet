@@ -26,12 +26,12 @@ def train(model, train_inputs, train_ground_truth, batch_size=32):
     """
 
     # Loop through all the batches.
-    for i in range(0, int(train_inputs.shape[0]/batch_size)):
+    for i in range(0, int(train_inputs.shape[0])):
         # Grab the input and corresponding ground truth batches.
         batch_start = i*batch_size
         batch_end = (i+1)*batch_size
-        input = train_inputs[batch_start:batch_end]
-        ground_truth = train_ground_truth[batch_start:batch_end]
+        input = train_inputs[i]
+        ground_truth = train_ground_truth[i]
 
         # Start a "gradient tape".
         #
@@ -81,13 +81,13 @@ def test(model, test_inputs, test_ground_truth, batch_size=32):
     This computes the average loss across the testing sample.
     """
     total_loss = 0
-    for i in range(0, int(test_inputs.shape[0]/batch_size)):
+    for i in range(0, int(test_inputs.shape[0])):
         # Grab the input and corresponding ground truth. TODO: we can batch
         # this if we want to make it faster.
         batch_start = i*batch_size
         batch_end = (i+1)*batch_size
-        input = test_inputs[batch_start:batch_end]
-        ground_truth = test_ground_truth[batch_start:batch_end]
+        input = test_inputs[i]
+        ground_truth = test_ground_truth[i]
 
         # Run the model on the input to get the predicted output.
         model_prediction = model(input)
@@ -99,15 +99,15 @@ def test(model, test_inputs, test_ground_truth, batch_size=32):
 def test_wav(model, test_inputs, test_ground_truth, out_path, batch_size=32):
     output_gt = np.copy(test_ground_truth.numpy())
     output = np.zeros(test_ground_truth.shape)
-    for i in range(0, int(test_inputs.shape[0]/batch_size)):
+    for i in range(0, int(test_inputs.shape[0])):
         # Grab the input and corresponding ground truth. TODO: we can batch
         # this if we want to make it faster.
         batch_start = i*batch_size
         batch_end = (i+1)*batch_size
-        batched_input = test_inputs[batch_start:batch_end]
+        batched_input = test_inputs[i]
 
         # Run the model on the input to get the predicted output.
-        output[batch_start:batch_end] = model(batched_input)
+        output[i] = model(batched_input)
 
     # Flatten the output.
     output = np.reshape(output, (-1))
@@ -148,7 +148,7 @@ def main():
 
     if mode == "TRAIN":
         # Train the model for some number of epochs, and time how long it takes.
-        epochs = int(sys.argv[4])
+        epochs = int(sys.argv[3])
         start = time.time()
 
         for i in range(epochs):
