@@ -112,9 +112,9 @@ def test_wav(model, test_inputs, out_path, batch_size=32):
     output = np.reshape(output, (-1))
 
     # Convert to wav.
-    # output = output * 32768.0
-    # output = output.astype(np.int16, order='C')
-    wavio.write(out_path + "_wet.wav", output, 44100, sampwidth=2)
+    output = output * 32768.0
+    output = output.astype(np.int16, order='C')
+    wavio.write(out_path + "_wet.wav", output, 44100)
 
 def main():
     """
