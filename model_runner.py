@@ -96,9 +96,8 @@ def test(model, test_inputs, test_ground_truth, batch_size=32):
         total_loss += model.loss(model_prediction, ground_truth)
     return total_loss / float(int(test_inputs.shape[0]/batch_size))
 
-def test_wav(model, test_inputs, test_ground_truth, out_path, batch_size=32):
-    output_gt = np.copy(test_ground_truth.numpy())
-    output = np.zeros(test_ground_truth.shape)
+def test_wav(model, test_inputs, out_path, batch_size=32):
+    output = np.zeros((test_inputs.shape[0], 128))
     for i in range(0, int(test_inputs.shape[0]/batch_size)):
         # Grab the input and corresponding ground truth. TODO: we can batch
         # this if we want to make it faster.
@@ -111,15 +110,11 @@ def test_wav(model, test_inputs, test_ground_truth, out_path, batch_size=32):
 
     # Flatten the output.
     output = np.reshape(output, (-1))
-    output_gt = np.reshape(output_gt, (-1))
 
     # Convert to wav.
-    output = output * 32768.0
-    output_gt = output_gt * 32768.0
-    output = output.astype(np.int16, order='C')
-    output_gt = output_gt.astype(np.int16, order='C')
-    wavio.write(out_path + "_wet.wav", output, 44100)
-    wavio.write(out_path + "_gt.wav", output_gt, 44100)
+    # output = output * 32768.0
+    # output = output.astype(np.int16, order='C')
+    wavio.write(out_path + "_wet.wav", output, 44100, sampwidth=2)
 
 def main():
     """
@@ -129,8 +124,8 @@ def main():
     # TODO: turn this into an argparse template.
     mode = sys.argv[1]
     filepath = sys.argv[2]
-    if mode not in ['TRAIN', 'LOAD-AND-TRAIN', 'TEST']:
-        print('mode must be one of <TRAIN, LOAD-AND-TRAIN, TEST>')
+    if mode not in ['TRAIN', 'LOAD-AND-TRAIN', 'TEST', 'RUN']:
+        print('mode must be one of <TRAIN, LOAD-AND-TRAIN, TEST, RUN>')
         return
 
     # Print out working directory, since that's useful for CoLab, and
@@ -138,23 +133,31 @@ def main():
     print("Working directory: ", os.getcwd())
     print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
-    # Get data.
-    print("Getting and preprocessing audio data from path " + filepath)
-    start = time.time()
-    # Get the data using preprocess.py.
-    train_inputs, train_ground_truth, test_inputs, test_ground_truth = get_data(filepath, 128, 2047)
-    print("train inputs shape: ", train_inputs.shape)
-    print("train ground truth shape: ", train_ground_truth.shape)
-    print("test inputs shape: ", test_inputs.shape)
-    print("test ground truth shape: ", test_ground_truth.shape)
-    end = time.time()
-    print("Done getting audio data, took", (end - start) / 60, "minutes.")
-
     # Create the model object. See audio_device_model.py.
     model = AudioDeviceModel()
 
+    # Get data.
+    if (mode == 'RUN'):
+        print("Getting and preprocessing audio data from path " + filepath)
+        start = time.time()
+        # Get the data using preprocess.py.
+        run_data = get_run_data(filepath, 128, 2047)
+        end = time.time()
+        print("Done getting audio data, took", (end - start) / 60, "minutes.")
+    else:
+        print("Getting and preprocessing audio data from path " + filepath)
+        start = time.time()
+        # Get the data using preprocess.py.
+        train_inputs, train_ground_truth, test_inputs, test_ground_truth = get_train_test_data(filepath, 128, 2047)
+        print("train inputs shape: ", train_inputs.shape)
+        print("train ground truth shape: ", train_ground_truth.shape)
+        print("test inputs shape: ", test_inputs.shape)
+        print("test ground truth shape: ", test_ground_truth.shape)
+        end = time.time()
+        print("Done getting audio data, took", (end - start) / 60, "minutes.")
+
     # Load weights if we are testing or resuming training.
-    if mode == "LOAD-AND-TRAIN" or mode == "TEST":
+    if mode == "LOAD-AND-TRAIN" or mode == "TEST" or mode == "RUN":
         print("Loading model weights...")
         model.load_weights('model_weights/model_weights')
         print("Done.")
@@ -182,13 +185,21 @@ def main():
         # Save the weights for later use.
         model.save_weights('model_weights/model_weights', save_format='tf')
 
-    # Test the model.
-    test_loss = test(model, test_inputs, test_ground_truth, 512)
-    print("FINAL LOSS ON TEST DATA:", test_loss)
-
-    # Write out a wav file.
-    test_wav(model, test_inputs, test_ground_truth, "test", 512)
-    print("Wrote out wav to: test_gt.wav and test_wet.wav")
+    if mode == 'RUN':
+        # Write out a wav file.
+        print("Processing file...")
+        start = time.time()
+        test_wav(model, run_data, "test", 512)
+        end = time.time()
+        data_length_in_minutes = (run_data.shape[0] * 128) / (44100 * 60)
+        processing_time_in_minutes = start-end/60
+        print("Done. Took ", processing_time_in_minutes, " minutes.")
+        print("This is ", data_length_in_minutes/processing_time_in_minutes, "x realtime.")
+        print("Wrote out wav to test_wet.wav")
+    else:
+        # Test the model.
+        test_loss = test(model, test_inputs, test_ground_truth, 512)
+        print("FINAL LOSS ON TEST DATA:", test_loss)
 
 if __name__ == '__main__':
    main()
