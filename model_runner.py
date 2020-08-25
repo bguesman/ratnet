@@ -126,12 +126,19 @@ def main():
     Main function... so where we actually run everything from.
     """
 
+    # TODO: turn this into an argparse template.
     mode = sys.argv[1]
     filepath = sys.argv[2]
+    if mode not in ['TRAIN', 'LOAD-AND-TRAIN', 'TEST']:
+        print('mode must be one of <TRAIN, LOAD-AND-TRAIN, TEST>')
+        return
 
+    # Print out working directory, since that's useful for CoLab, and
+    # print out whether or not we have access to a GPU.
     print("Working directory: ", os.getcwd())
     print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
+    # Get data.
     print("Getting and preprocessing audio data from path " + filepath)
     start = time.time()
     # Get the data using preprocess.py.
@@ -146,9 +153,16 @@ def main():
     # Create the model object. See audio_device_model.py.
     model = AudioDeviceModel()
 
-    if mode == "TRAIN":
+    # Load weights if we are testing or resuming training.
+    if mode == "LOAD-AND-TRAIN" or mode == "TEST":
+        print("Loading model weights...")
+        model.load_weights('model_weights/model_weights')
+        print("Done.")
+
+    # Train the model if we are training or resuming training.
+    if mode == "TRAIN" or mode == "LOAD-AND-TRAIN":
         # Train the model for some number of epochs, and time how long it takes.
-        epochs = int(sys.argv[4])
+        epochs = int(sys.argv[3])
         start = time.time()
 
         for i in range(epochs):
@@ -167,37 +181,6 @@ def main():
 
         # Save the weights for later use.
         model.save_weights('model_weights/model_weights', save_format='tf')
-    elif mode == "LOAD-AND-TRAIN":
-        print("Loading model weights...")
-        model.load_weights('model_weights/model_weights')
-        print("Done.")
-        # Train the model for some number of epochs, and time how long it takes.
-        epochs = int(sys.argv[4])
-        start = time.time()
-
-        for i in range(epochs):
-            print("EPOCH ", i)
-            shuffle_order = list(range(train_inputs.shape[0]))
-            random.shuffle(shuffle_order)
-            #shuffle_order = tf.convert_to_tensor(shuffle_order, dtype=tf.int64)
-            X = (train_inputs.numpy())[shuffle_order,:]
-            y = (train_ground_truth.numpy())[shuffle_order,:]
-            train(model, X, y)
-            now = time.time()
-            print("Been training for ", (now - start) / 60 , " minutes.")
-
-        end = time.time()
-        print("Done training, took", (end - start) / 60, "minutes.")
-
-        # Save the weights for later use.
-        model.save_weights('model_weights/model_weights', save_format='tf')
-    elif mode == "TEST":
-        print("Loading model weights...")
-        model.load_weights('model_weights/model_weights')
-        print("Done.")
-    else:
-        print('mode must be one of <TRAIN, TEST>')
-        return
 
     # Test the model.
     test_loss = test(model, test_inputs, test_ground_truth, 512)

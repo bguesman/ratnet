@@ -39,7 +39,7 @@ class AudioDeviceModel(tf.keras.Model):
         # We define a member variable for each layer in the network. This
         # example just has 2 linear layers.
 
-        self.numConvolutionalLayers = 10;
+        self.numConvolutionalLayers = 10
         self.io = []
         self.c = []
         for i in range(self.numConvolutionalLayers):
