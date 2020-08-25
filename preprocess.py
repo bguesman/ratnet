@@ -72,7 +72,7 @@ def get_data(file_directory, frame_size, receptive_field):
 	# That way we can actually write out the data to a wav file
 	# and make sense of it if we want to.
 	X_train, X_test, y_train, y_test = train_test_split(clean_signal,
-		dist_signal, test_size=0.25, shuffle=False)
+		dist_signal, test_size=0.25, shuffle=True)
 
 	return tf.convert_to_tensor(X_train), tf.convert_to_tensor(y_train), \
 		tf.convert_to_tensor(X_test), tf.convert_to_tensor(y_test)
