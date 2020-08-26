@@ -70,7 +70,7 @@ def get_train_test_data(file_directory, frame_size, receptive_field):
 
 	# We can use the sklearn split now.
 	X_train, X_test, y_train, y_test = train_test_split(clean_signal,
-		dist_signal, test_size=0.25, shuffle=False)
+		dist_signal, test_size=0.25, shuffle=True)
 
 	return tf.convert_to_tensor(X_train), tf.convert_to_tensor(y_train), \
 		tf.convert_to_tensor(X_test), tf.convert_to_tensor(y_test)
