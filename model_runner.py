@@ -63,17 +63,25 @@ def train(model, train_inputs, train_ground_truth, model_discriminator=None, bat
                 # we do really well! When it does well, we do poorly.
                 loss -= discriminator_loss
 
-        # The gradient tape now has the derivatives of the loss function
-        # w.r.t. to the model parameters. We grab them here.
-        gradients = tape.gradient(loss, model.trainable_variables)
-        # Now, we update the model parameters according to the gradients,
-        # using the optimizer we defined in the model.
-        model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-
         if (model_discriminator is not None):
-            # Do the same with the discriminator.
-            discriminator_gradients = tape.gradient(discriminator_loss, model_discriminator.trainable_variables)
-            model_discriminator.optimizer.apply_gradients(zip(discriminator_gradients, model_discriminator.trainable_variables))
+            if (i % 2 == 0):
+                # Do the same with the discriminator.
+                discriminator_gradients = tape.gradient(discriminator_loss, model_discriminator.trainable_variables)
+                model_discriminator.optimizer.apply_gradients(zip(discriminator_gradients, model_discriminator.trainable_variables))
+            else:
+                # The gradient tape now has the derivatives of the loss function
+                # w.r.t. to the model parameters. We grab them here.
+                gradients = tape.gradient(loss, model.trainable_variables)
+                # Now, we update the model parameters according to the gradients,
+                # using the optimizer we defined in the model.
+                model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+        else:
+            # The gradient tape now has the derivatives of the loss function
+            # w.r.t. to the model parameters. We grab them here.
+            gradients = tape.gradient(loss, model.trainable_variables)
+            # Now, we update the model parameters according to the gradients,
+            # using the optimizer we defined in the model.
+            model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
         # This is called "checkpointing". It will save the weights for us
         # so we can load them later. TODO: I think this overwrites it every
