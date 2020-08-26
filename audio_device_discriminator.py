@@ -16,11 +16,11 @@ class AudioDeviceDiscriminator(tf.keras.Model):
         # How many samples we are trying to predict at once.
         self.frame_size = 128
 
-        # For now, just use a few convolutional layers.
-        self.c1 = tf.keras.layers.Conv1D(filters=2, kernel_size=5, strides=2, padding="same")
-        self.c2 = tf.keras.layers.Conv1D(filters=4, kernel_size=5, strides=2, padding="same")
-        self.c3 = tf.keras.layers.Conv1D(filters=8, kernel_size=5, strides=2, padding="same")
-        self.c4 = tf.keras.layers.Conv1D(filters=16, kernel_size=5, strides=2, padding="same")
+        # For now, just use a few causal convolutional layers.
+        self.c1 = tf.keras.layers.Conv1D(filters=4, kernel_size=5, dilation_rate=1, padding="causal")
+        self.c2 = tf.keras.layers.Conv1D(filters=8, kernel_size=5, dilation_rate=4, padding="causal")
+        self.c3 = tf.keras.layers.Conv1D(filters=16, kernel_size=5, dilation_rate=8, padding="causal")
+        self.c4 = tf.keras.layers.Conv1D(filters=32, kernel_size=5, dilation_rate=16, padding="causal")
         self.f = tf.keras.layers.Flatten()
         self.d1 = tf.keras.layers.Dense(128, activation="relu")
         self.d2 = tf.keras.layers.Dense(128, activation="relu")
@@ -33,7 +33,8 @@ class AudioDeviceDiscriminator(tf.keras.Model):
     @tf.function
     def call(self, input):
         # high pass to emphasize high frequencies
-        input = hpf(input)
+        # EDIT: try not high passing.
+        # input = hpf(input)
         input = tf.expand_dims(input, axis=2)
         # do the convolution
         conv_out = self.c4(self.lr(self.c3(self.lr(self.c2(self.lr(self.c1(input)))))))
