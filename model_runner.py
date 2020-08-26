@@ -2,12 +2,13 @@ import numpy as np
 import tensorflow as tf
 from preprocess import *
 from audio_device_model import AudioDeviceModel
+from audio_device_discriminator import AudioDeviceDiscriminator
 import os
 import sys
 import time
 import random
 
-def train(model, train_inputs, train_ground_truth, batch_size=32):
+def train(model, train_inputs, train_ground_truth, model_discriminator=None, batch_size=32):
     """
 
     This runs through one epoch of the training process. It takes as input:
@@ -49,12 +50,30 @@ def train(model, train_inputs, train_ground_truth, batch_size=32):
             # w.r.t. the model parameters.
             loss = model.loss(model_prediction, ground_truth)
 
+            # Use the discriminator
+            if (model_discriminator is not None):
+                frame_size = model_prediction.shape[1]
+                in_frame = input[:,-frame_size:]
+                discriminator_input = tf.concat([in_frame, model_prediction], axis=0)
+                discriminator_prediction = model_discriminator(discriminator_input)
+                discriminator_ground_truth = tf.one_hot(tf.concat([tf.ones(batch_size, dtype=tf.int32), tf.zeros(batch_size, dtype=tf.int32)], axis=0), 2)
+                discriminator_loss = model_discriminator.loss(discriminator_prediction, discriminator_ground_truth)
+
+                # Subtract from the total loss---when the discriminator does poorly,
+                # we do really well! When it does well, we do poorly.
+                loss -= discriminator_loss
+
         # The gradient tape now has the derivatives of the loss function
         # w.r.t. to the model parameters. We grab them here.
         gradients = tape.gradient(loss, model.trainable_variables)
         # Now, we update the model parameters according to the gradients,
         # using the optimizer we defined in the model.
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
+        if (model_discriminator is not None):
+            # Do the same with the discriminator.
+            discriminator_gradients = tape.gradient(discriminator_loss, model_discriminator.trainable_variables)
+            model_discriminator.optimizer.apply_gradients(zip(discriminator_gradients, model_discriminator.trainable_variables))
 
         # This is called "checkpointing". It will save the weights for us
         # so we can load them later. TODO: I think this overwrites it every
@@ -68,6 +87,8 @@ def train(model, train_inputs, train_ground_truth, batch_size=32):
         # contiguous, since our model has state? If we store state in the
         # model, will this fuck up that state and fuck up the results?
         if (i == 0 or i % 50 == 0):
+            if (model_discriminator is not None):
+                print ("DISCRIMINATOR LOSS on iteration ", i, ": ", discriminator_loss)
             # Random test.
             test_size = 100 * batch_size
             random_index = int(random.uniform(0, 1) * (train_inputs.shape[0]-test_size))
@@ -168,8 +189,14 @@ def main():
 
     # Train the model if we are training or resuming training.
     if mode == "TRAIN" or mode == "LOAD-AND-TRAIN":
+        # Create discriminator.
+        use_discriminator = (sys.argv[3] == "TRUE")
+        model_discriminator = None
+        if (use_discriminator):
+            model_discriminator = AudioDeviceDiscriminator()
+
         # Train the model for some number of epochs, and time how long it takes.
-        epochs = int(sys.argv[3])
+        epochs = int(sys.argv[4])
         start = time.time()
         for i in range(epochs):
             print("EPOCH ", i)
@@ -177,7 +204,7 @@ def main():
             random.shuffle(shuffle_order)
             X = (train_inputs.numpy())[shuffle_order,:]
             y = (train_ground_truth.numpy())[shuffle_order,:]
-            train(model, X, y)
+            train(model, X, y, model_discriminator)
             now = time.time()
             print("Been training for ", (now - start) / 60 , " minutes.")
         end = time.time()
