@@ -61,7 +61,7 @@ def train(model, train_inputs, train_ground_truth, model_discriminator=None, bat
 
                 # Subtract from the total loss---when the discriminator does poorly,
                 # we do really well! When it does well, we do poorly.
-                loss -= discriminator_loss
+                loss -= 0.1 * discriminator_loss
 
         if (model_discriminator is not None):
             if (i % 2 == 0):
