@@ -9,7 +9,7 @@ import time
 import random
 import tensorflow_model_optimization as tfmot
 
-def train(model, train_inputs, train_ground_truth, model_discriminator=None, batch_size=32):
+def train(model, train_inputs, train_ground_truth, model_discriminator=None, batch_size=32, pruning=False):
     """
 
     This runs through one epoch of the training process. It takes as input:
@@ -87,7 +87,7 @@ def train(model, train_inputs, train_ground_truth, model_discriminator=None, bat
         # This is called "checkpointing". It will save the weights for us
         # so we can load them later. TODO: I think this overwrites it every
         # time tho.
-        if (i % 80 == 0):
+        if (i % 80 == 0 and not pruning):
            model.save_weights('model_weights/model_weights', save_format='tf')
 
         # At this point we would usually test our model on some random
@@ -215,6 +215,7 @@ def main():
     # Train the model if we are training or resuming training.
     if mode == "TRAIN" or mode == "LOAD-AND-TRAIN" or mode == 'PRUNE':
         # Create discriminator.
+        pruning = (mode == 'PRUNE')
         use_discriminator = (sys.argv[3] == "TRUE")
         model_discriminator = None
         if (use_discriminator):
@@ -229,14 +230,15 @@ def main():
             random.shuffle(shuffle_order)
             X = (train_inputs.numpy())[shuffle_order,:]
             y = (train_ground_truth.numpy())[shuffle_order,:]
-            train(model, X, y, model_discriminator)
+            train(model, X, y, model_discriminator, pruning=pruning)
             now = time.time()
             print("Been training for ", (now - start) / 60 , " minutes.")
         end = time.time()
         print("Done training, took", (end - start) / 60, "minutes.")
 
         # Save the weights for later use.
-        model.save_weights('model_weights/model_weights', save_format='tf')
+        if not pruning:
+            model.save_weights('model_weights/model_weights', save_format='tf')
 
     if mode == 'RUN':
         # Write out a wav file.
