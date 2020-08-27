@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import random
+import tensorflow_model_optimization as tfmot
 
 def train(model, train_inputs, train_ground_truth, model_discriminator=None, batch_size=32):
     """
@@ -157,8 +158,8 @@ def main():
     mode = sys.argv[1]
     filepath = sys.argv[2]
 
-    if mode not in ['TRAIN', 'LOAD-AND-TRAIN', 'TEST', 'RUN']:
-        print('mode must be one of <TRAIN, LOAD-AND-TRAIN, TEST, RUN>')
+    if mode not in ['TRAIN', 'LOAD-AND-TRAIN', 'TEST', 'RUN', 'PRUNE']:
+        print('mode must be one of <TRAIN, LOAD-AND-TRAIN, TEST, RUN, PRUNE>')
         return
 
     # Print out working directory, since that's useful for CoLab, and
@@ -190,10 +191,26 @@ def main():
         print("Done getting audio data, took", (end - start) / 60, "minutes.")
 
     # Load weights if we are testing or resuming training.
-    if mode == "LOAD-AND-TRAIN" or mode == "TEST" or mode == "RUN":
+    if mode == "LOAD-AND-TRAIN" or mode == "TEST" or mode == "RUN" or mode == "PRUNE":
         print("Loading model weights...")
         model.load_weights('model_weights/model_weights')
         print("Done.")
+
+    if mode == 'PRUNE':
+        # Make bogus prediction to force build model.
+        #bogus_prediction = model(train_inputs[0:2])
+
+        # Prune each convolutional layer.
+        #print(model.summary())
+        for i in range(len(model.c)):
+            print("Pruning layer ", i)
+            model.c[i] = tfmot.sparsity.keras.prune_low_magnitude(model.c[i])
+            if (i < len(model.c) - 1):
+                model.io[i] = tfmot.sparsity.keras.prune_low_magnitude(model.io[i])
+        model.mixer = tfmot.sparsity.keras.prune_low_magnitude(model.mixer)
+
+        # Make another bogus prediction to force build model again.
+        # bogus_prediction = model(train_inputs[0:2])
 
     # Train the model if we are training or resuming training.
     if mode == "TRAIN" or mode == "LOAD-AND-TRAIN":
@@ -232,7 +249,8 @@ def main():
         print("Done. Took ", processing_time_in_minutes, " minutes.")
         print("This is ", data_length_in_minutes/processing_time_in_minutes, "x realtime.")
         print("Wrote out wav to test_wet.wav")
-    else:
+
+    if mode == 'TEST':
         # Test the model.
         test_loss = test(model, test_inputs, test_ground_truth, 1024)
         print("FINAL LOSS ON TEST DATA:", test_loss)

@@ -37,6 +37,7 @@ class AudioDeviceDiscriminator(tf.keras.Model):
         # input = hpf(input)
         input = tf.expand_dims(input, axis=2)
         # do the convolution
+        # TODO: there should probably be skip connections here?
         conv_out = self.c4(self.lr(self.c3(self.lr(self.c2(self.lr(self.c1(input)))))))
         # flatten and apply dense layer
         return self.d3(self.d2(self.d1(self.f(conv_out))))
