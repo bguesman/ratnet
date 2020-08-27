@@ -213,7 +213,7 @@ def main():
         # bogus_prediction = model(train_inputs[0:2])
 
     # Train the model if we are training or resuming training.
-    if mode == "TRAIN" or mode == "LOAD-AND-TRAIN":
+    if mode == "TRAIN" or mode == "LOAD-AND-TRAIN" or mode == 'PRUNE':
         # Create discriminator.
         use_discriminator = (sys.argv[3] == "TRUE")
         model_discriminator = None
@@ -249,8 +249,7 @@ def main():
         print("Done. Took ", processing_time_in_minutes, " minutes.")
         print("This is ", data_length_in_minutes/processing_time_in_minutes, "x realtime.")
         print("Wrote out wav to test_wet.wav")
-
-    if mode == 'TEST':
+    else:
         # Test the model.
         test_loss = test(model, test_inputs, test_ground_truth, 1024)
         print("FINAL LOSS ON TEST DATA:", test_loss)
