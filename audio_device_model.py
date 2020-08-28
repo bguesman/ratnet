@@ -43,7 +43,7 @@ class AudioDeviceModel(tf.keras.Model):
                 kernel_size=self.k[i], dilation_rate=self.d[i], padding="causal"))
 
             # Convolution layers for controllable user variables
-            self.control_layers[i].append(tf.keras.layers.Conv1D(filters=self.chan[i],
+            self.control_layers.append(tf.keras.layers.Conv1D(filters=self.chan[i],
                 kernel_size=1, padding="causal"))
 
             # IO mixer (convolutional layer with kernel size 1). Final
