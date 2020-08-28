@@ -182,7 +182,7 @@ def main():
         print("Getting and preprocessing audio data from path " + filepath)
         start = time.time()
         # Get the data using preprocess.py.
-        train_inputs, train_ground_truth, test_inputs, test_ground_truth = get_train_test_data(filepath, 128, 2047)
+        train_inputs, train_ground_truth, test_inputs, test_ground_truth = get_train_test_data(filepath, 128, 2047, 1)
         print("train inputs shape: ", train_inputs.shape)
         print("train ground truth shape: ", train_ground_truth.shape)
         print("test inputs shape: ", test_inputs.shape)

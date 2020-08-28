@@ -35,10 +35,22 @@ class AudioDeviceModel(tf.keras.Model):
         # Convolutional layers.
         self.c = []
 
+        # Set number of variable controls of data (ex. filter cutoff, gain, volume)
+        self.control_size = 1
+        self.control_layers = {}
+        for i in range(self.control_size):
+            self.control_layers[i] = []
+
         for i in range(len(self.d)):
             # Convolutional layer.
             self.c.append(tf.keras.layers.Conv1D(filters=self.chan[i],
                 kernel_size=self.k[i], dilation_rate=self.d[i], padding="causal"))
+            
+            # Convolution layers for controlable user variables
+            for j in range(self.control_size):
+                self.control_layers[j].append(tf.keras.layers.Conv1D(filters=1,
+                    kernel_size=1, padding="causal"))
+
             # IO mixer (convolutional layer with kernel size 1). Final
             # layer does not need one.
             if (i != len(self.d) - 1):
@@ -69,7 +81,10 @@ class AudioDeviceModel(tf.keras.Model):
         accumulator = []
         for i in range(len(self.c)):
             # Apply convolutional layer i and non-linearity
-            layer_output = self.c[i](input)
+            layer_output = self.c[i](input[:,:,0])
+            for j in range(len(self.control_size)):
+                layer_output = tf.math.add(layer_output, self.control_layers[j](input[:,:,j+1]))
+
             layer_output_nonlinear = self.lr(layer_output)
             # Add the result to the total output of the network. This is a
             # "skip connection".
