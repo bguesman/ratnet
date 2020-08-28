@@ -45,7 +45,7 @@ class AudioDeviceModel(tf.keras.Model):
             # Convolutional layer.
             self.c.append(tf.keras.layers.Conv1D(filters=self.chan[i],
                 kernel_size=self.k[i], dilation_rate=self.d[i], padding="causal"))
-            
+
             # Convolution layers for controlable user variables
             for j in range(self.control_size):
                 self.control_layers[j].append(tf.keras.layers.Conv1D(filters=1,
@@ -75,14 +75,16 @@ class AudioDeviceModel(tf.keras.Model):
         # We only have one channel, so we need to use expand_dims to
         # add a 3rd dimension that's just length 1 to the input.
         # The following gives us a tensor of size [batch_size, 128, 1].
-        input = tf.expand_dims(input, axis=2)
+
+        # No longer necessary.
+        # input = tf.expand_dims(input, axis=2)
 
         # Accumulator variable that we'll add each layer output to.
         accumulator = []
         for i in range(len(self.c)):
             # Apply convolutional layer i and non-linearity
             layer_output = self.c[i](input[:,:,0])
-            for j in range(len(self.control_size)):
+            for j in range(len(self.control_layers)):
                 layer_output = tf.math.add(layer_output, self.control_layers[j](input[:,:,j+1]))
 
             layer_output_nonlinear = self.lr(layer_output)
