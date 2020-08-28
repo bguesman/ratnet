@@ -84,10 +84,10 @@ def get_train_test_data(file_directory, frame_size, receptive_field, controls=0)
 					# TODO: idk how to do this without using a list comprehension
 
 					print("Creating distorted splits")
-					dist_splits = np.array([df_data[i*frame_size:(i+1)*frame_size] for i in range(int(df_data.shape[0]/frame_size))])
+					dist_splits = np.array([df_data[i*frame_size:(i+1)*frame_size] for i in range(int(0.1 * (df_data.shape[0]/frame_size)))])
 					print("Distorted signal shape: ", dist_splits.shape)
 					print("Creating clean splits")
-					clean_splits = np.array([cf_with_controls[i*frame_size:receptive_field+(i+1)*frame_size, :] for i in range(int((cf_with_controls.shape[0]-receptive_field)/frame_size))])
+					clean_splits = np.array([cf_with_controls[i*frame_size:receptive_field+(i+1)*frame_size, :] for i in range(int(0.1 * ((cf_with_controls.shape[0]-receptive_field)/frame_size)))])
 					print("Clean signal shape: ", clean_splits.shape)
 
 
