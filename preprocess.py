@@ -133,15 +133,14 @@ def get_train_test_data(file_directory, frame_size, receptive_field, controls=0)
 	# wavio.write("ytrain1.wav", y_train[11], 44100)
 	# wavio.write("xtest1.wav", X_test[11], 44100)
 	# wavio.write("ytest1.wav", y_test[11], 44100)
-	print("herehere")
+	print("Running train_test_split...")
 	# We can use the sklearn split now.
 	X_train, X_test, y_train, y_test = train_test_split(clean_signal,
 		dist_signal, test_size=0.25, shuffle=True)
 
-
-
-	return tf.convert_to_tensor(X_train), tf.convert_to_tensor(y_train),
-	tf.convert_to_tensor(X_test), tf.convert_to_tensor(y_test)
+	print("Returning tensors")
+	return tf.convert_to_tensor(X_train), tf.convert_to_tensor(y_train), \
+		tf.convert_to_tensor(X_test), tf.convert_to_tensor(y_test)
 
 def get_run_data(file_path, frame_size, receptive_field):
 	cf = wavio.read(file_path)
