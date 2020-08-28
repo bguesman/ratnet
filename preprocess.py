@@ -77,8 +77,8 @@ def get_train_test_data(file_directory, frame_size, receptive_field, controls=0)
 					# add to list of samples after splitting on samples_per_datum
 					# TODO: idk how to do this without using a list comprehension
 
-					dist_splits = np.array([df_data[i*frame_size:(i+1)*frame_size] for i in range(int(0.1 * (df_data.shape[0]/frame_size)))])
-					clean_splits = np.array([cf_with_controls[i*frame_size:receptive_field+(i+1)*frame_size, :] for i in range(int(0.1 * ((cf_with_controls.shape[0]-receptive_field)/frame_size)))])
+					dist_splits = np.array([df_data[i*frame_size:(i+1)*frame_size] for i in range(int(0.25 * (df_data.shape[0]/frame_size)))])
+					clean_splits = np.array([cf_with_controls[i*frame_size:receptive_field+(i+1)*frame_size, :] for i in range(int(0.25 * ((cf_with_controls.shape[0]-receptive_field)/frame_size)))])
 
 
 					clean_signal.extend(clean_splits)
