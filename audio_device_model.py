@@ -77,7 +77,7 @@ class AudioDeviceModel(tf.keras.Model):
         # Accumulator variable that we'll add each layer output to.
         accumulator = []
         controls = input[:,:,1:]
-        signal = input[:,:0:1]
+        signal = input[:,:,0:1]
         for i in range(len(self.c)):
             # Apply convolutional layer i and non-linearity
             layer_output = self.c[i](signal)
