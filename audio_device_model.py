@@ -35,7 +35,7 @@ class AudioDeviceModel(tf.keras.Model):
         # Convolutional layers.
         self.c = []
         # Control layers.
-        self.control_layers = []
+        # self.control_layers = []
 
         for i in range(len(self.d)):
             # Convolutional layer.
@@ -43,8 +43,8 @@ class AudioDeviceModel(tf.keras.Model):
                 kernel_size=self.k[i], dilation_rate=self.d[i], padding="causal"))
 
             # Convolution layers for controllable user variables
-            self.control_layers.append(tf.keras.layers.Conv1D(filters=self.chan[i],
-                kernel_size=1, padding="causal"))
+            # self.control_layers.append(tf.keras.layers.Conv1D(filters=self.chan[i],
+            #     kernel_size=1, padding="causal"))
 
             # IO mixer (convolutional layer with kernel size 1). Final
             # layer does not need one.
@@ -80,8 +80,8 @@ class AudioDeviceModel(tf.keras.Model):
         signal = input[:,:,0:1]
         for i in range(len(self.c)):
             # Apply convolutional layer i and non-linearity
-            layer_output = self.c[i](signal)
-            layer_output = tf.math.add(layer_output, self.control_layers[i](controls))
+            layer_output = self.c[i](tf.concat([signal, controls], axis=2))
+            #layer_output = tf.math.add(layer_output, self.control_layers[i](controls))
 
             layer_output_nonlinear = self.lr(layer_output)
             # Add the result to the total output of the network. This is a
