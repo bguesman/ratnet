@@ -228,8 +228,8 @@ def main():
             print("EPOCH ", i)
             shuffle_order = list(range(train_inputs.shape[0]))
             random.shuffle(shuffle_order)
-            X = (train_inputs.numpy())[shuffle_order,:]
-            y = (train_ground_truth.numpy())[shuffle_order,:]
+            X = (train_inputs.numpy())[shuffle_order,:,:]
+            y = (train_ground_truth.numpy())[shuffle_order,:,:]
             train(model, X, y, model_discriminator, pruning=pruning)
             now = time.time()
             print("Been training for ", (now - start) / 60 , " minutes.")
