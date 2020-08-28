@@ -59,17 +59,17 @@ def get_train_test_data(file_directory, frame_size, receptive_field, controls=0)
 					contr = np.repeat(contr, cf_data.shape[0], axis=0)
 					# add params to clean signal data
 					cf_with_controls = np.concatenate([cf_data, contr], axis=1)
-					ef = os.path.join(file_directory, ef)
+					#ef = os.path.join(file_directory, ef)
 					df = wavio.read(ef)
 					df_data = df.data.flatten()
 					# create padding
 					# pad clean and distorted data at the end with frame size
-					
+
 					df_data = np.pad(df_data, (0, df_data.size % frame_size), 'constant', constant_values=(0, 0))
 
 					# convert to normalized float arrays
 					# TODO: this fails on non-16-bit bit depths
-					
+
 					df_data = df_data.astype(np.float32, order='C') / 32768.0
 
 
@@ -137,7 +137,7 @@ def get_train_test_data(file_directory, frame_size, receptive_field, controls=0)
 
 
 
-	return tf.convert_to_tensor(X_train), tf.convert_to_tensor(y_train), 
+	return tf.convert_to_tensor(X_train), tf.convert_to_tensor(y_train),
 	tf.convert_to_tensor(X_test), tf.convert_to_tensor(y_test)
 
 def get_run_data(file_path, frame_size, receptive_field):
