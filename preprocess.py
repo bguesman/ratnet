@@ -56,28 +56,38 @@ def get_train_test_data(file_directory, frame_size, receptive_field, controls=0)
 						contr[0,i-1] = val
 
 					# make same length as input
+					print("Creating control input:")
 					contr = np.repeat(contr, cf_data.shape[0], axis=0)
 					# add params to clean signal data
+					print("Adding params:")
 					cf_with_controls = np.concatenate([cf_data, contr], axis=1)
 					#ef = os.path.join(file_directory, ef)
+					print("Reading in distorted data")
 					df = wavio.read(ef)
+					print("Flattening distorted data")
 					df_data = df.data.flatten()
 					# create padding
 					# pad clean and distorted data at the end with frame size
 
+
+					print("Padding distorted data")
 					df_data = np.pad(df_data, (0, df_data.size % frame_size), 'constant', constant_values=(0, 0))
 
 					# convert to normalized float arrays
 					# TODO: this fails on non-16-bit bit depths
 
+					print("Converting distorted data to float")
 					df_data = df_data.astype(np.float32, order='C') / 32768.0
 
 
 					# add to list of samples after splitting on samples_per_datum
 					# TODO: idk how to do this without using a list comprehension
+
+					print("Creating clean and distorted splits")
 					clean_splits = np.array([cf_with_controls[i*frame_size:receptive_field+(i+1)*frame_size, :] for i in range(int((cf_with_controls.shape[0]-receptive_field)/frame_size))])
 					dist_splits = np.array_split(df_data, df_data.shape[0]/frame_size)
 
+					print("Extending clean and dist signal lists")
 					clean_signal.extend(clean_splits)
 					dist_signal.extend(dist_splits)
 
