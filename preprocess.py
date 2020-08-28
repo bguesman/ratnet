@@ -139,8 +139,8 @@ def get_train_test_data(file_directory, frame_size, receptive_field, controls=0)
 		dist_signal, test_size=0.25, shuffle=True)
 
 	print("Returning tensors")
-	return tf.convert_to_tensor(X_train), tf.convert_to_tensor(y_train), \
-		tf.convert_to_tensor(X_test), tf.convert_to_tensor(y_test)
+	return tf.convert_to_tensor(np.array(X_train)), tf.convert_to_tensor(np.array(y_train)), \
+		tf.convert_to_tensor(np.array(X_test)), tf.convert_to_tensor(np.array(y_test))
 
 def get_run_data(file_path, frame_size, receptive_field):
 	cf = wavio.read(file_path)
