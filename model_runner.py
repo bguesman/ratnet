@@ -291,7 +291,7 @@ def test(model, data_path):
 
             # TODO: squeezing here won't work for stereo!!
             # Divide by the number of items to make sure this is average loss.
-            total_loss += test_batch(model, x, y) / model_prediction.shape[0]
+            total_loss += test_batch(model, x, y) / x.shape[0]
             i += 1
     return total_loss / i
 
