@@ -246,7 +246,7 @@ def train_epoch(model, index, start=0.2, end=1.0):
         test_start = start + random.random() * ((end - test_width) - start)
         loss = test(model, index=index, start=test_start, end=test_start+test_width)
         print(bcolors.BOLD + bcolors.OKGREEN + \
-            "Loss on test data for batch " + str(b_i) + ":", \
+            "Loss on random contiguous train data subset for batch " + str(b_i) + ":", \
             loss, bcolors.ENDC)
         print('')
 
