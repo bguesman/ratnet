@@ -246,6 +246,11 @@ def train(model, data_path, weight_store_path, epochs, split=0.8):
         # Save the weights.
         if weight_store_path is not None:
             model.save_weights(weight_store_path + "_epoch_" + str(i), save_format='tf')
+        # Do a test.
+        loss = test(model, data_path)
+        print(bcolors.BOLD + bcolors.OKGREEN + \
+            "Loss on test data for epoch" + str(i) + ":", \
+            loss, bcolors.ENDC)
 
     print(bcolors.BOLD + bcolors.OKGREEN + "DONE TRAINING" + bcolors.ENDC)
 
