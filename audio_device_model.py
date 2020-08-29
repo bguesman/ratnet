@@ -34,8 +34,6 @@ class AudioDeviceModel(tf.keras.Model):
         self.io = []
         # Convolutional layers.
         self.c = []
-        # Control layers.
-        # self.control_layers = []
 
         for i in range(len(self.d)):
             # Convolutional layer.
@@ -48,8 +46,7 @@ class AudioDeviceModel(tf.keras.Model):
                 self.io.append(tf.keras.layers.Conv1D(filters=self.chan[i],
                     kernel_size=1, padding="causal"))
 
-        # Since activations have no learnable parameters, I think we only
-        # need one that we can reuse?
+        # Nonlinearity.
         self.lr = tf.keras.layers.ReLU()
 
         # Linear mixer (convolutional layer with kernel size 1).
@@ -58,57 +55,40 @@ class AudioDeviceModel(tf.keras.Model):
 
     @tf.function
     def call(self, input):
-        # This function actually runs the model on a given input.
-        # Because we use the layers API, this is super easy.
-
-        # Our input is shape [batch_size, 128]. But conv1D expects a
-        # 3D tensor, where the last dimension is the number of channels.
-        # We only have one channel, so we need to use expand_dims to
-        # add a 3rd dimension that's just length 1 to the input.
-        # The following gives us a tensor of size [batch_size, 128, 1].
-
-        # No longer necessary.
-        # input = tf.expand_dims(input, axis=2)
-
-        # Accumulator variable that we'll add each layer output to.
+        # Accumulator variable that we'll use to implement skip connections.
         accumulator = []
-        controls = input[:,:,1:]
+        # TODO: for now, the signal is always mono, so we can do this. But
+        # if we ever support stereo, this manual split won't work.
         signal = input[:,:,0:1]
+        controls = input[:,:,1:]
         for i in range(len(self.c)):
             # Apply convolutional layer i and non-linearity
             layer_output = self.c[i](tf.concat([signal, controls], axis=2))
-            #layer_output = tf.math.add(layer_output, self.control_layers[i](controls))
-
             layer_output_nonlinear = self.lr(layer_output)
+
             # Add the result to the total output of the network. This is a
             # "skip connection".
             accumulator.append(layer_output_nonlinear)
             if (i != len(self.c) - 1):
                 # Only compute input if there's a next layer to feed it to.
-                # Apply non-linearity and blend between the output and input
-                # via a 1x1 convolution.
-                #io_channels = tf.concat([layer_output_nonlinear, input], axis=2)
+                # Blend between the output and input via a 1x1 convolution.
                 signal = self.io[i](layer_output_nonlinear) + signal
 
-        # Squeeze the singleton channel dimension out of the tensor and take
-        # just the last 128 samples so the output shape is [batch_size, 256]
+        # Concatenate along the channel dimension and apply the 1x1
+        # convolution.
         mixer_channels = tf.concat(accumulator, axis=2)
         mixed = self.mixer(mixer_channels)
-        result = (tf.squeeze(mixed))[:,-self.frame_size:]
-        return result
+        # Squeeze out the last few samples and take only the last frame_size
+        # frames.
+        return tf.squeeze(mixed)[:,-self.frame_size:]
 
     def loss(self, prediction, ground_truth):
-        # This is the model's loss function, given a vector of predictions and
-        # a corresponding vector of ground truths.
-
         # High pass both signals.
         hpf_ground_truth = hpf(ground_truth)
         hpf_prediction = hpf(prediction)
 
-        # This is the "error to signal ratio" they describe in the paper.
-        # It's just a normalized L2 loss.
-        # Avoid dividing by zero.
+        # Compute normalized L2 loss.
         if (tf.reduce_sum(hpf_ground_truth ** 2) == 0.0):
-            # TODO: is this the right thing to do though?
+            # Avoid dividing by zero.
             return tf.reduce_sum((hpf_prediction - hpf_ground_truth) ** 2)
         return tf.reduce_sum((hpf_prediction - hpf_ground_truth) ** 2) / tf.reduce_sum(hpf_ground_truth ** 2)
