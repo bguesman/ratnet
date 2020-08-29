@@ -315,10 +315,13 @@ def main():
     model = setup_model(args)
 
     # Train the model.
+    start = time.time()
     if (args.mode == 'TRAIN'):
         train(model, data_path=args.data_path, \
             weight_store_path=args.weight_store_path,
             epochs=args.epochs)
+    end = time.time()
+    print("Training took", (start - end) / 3600, "hours")
 
     # Test the model.
     if (args.mode == 'TEST' or args.mode == 'TRAIN'):
