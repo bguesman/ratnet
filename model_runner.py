@@ -108,7 +108,7 @@ class FileInfo:
 
 # @brief: indexes files in data_path and returns a list of FileInfo structs.
 # @return: list of FileInfo structs for each file in directory data_path.
-def get_data_index(data_path, batches_per_file=10):
+def get_data_index(data_path, batches_per_file=50):
     print('')
     print(bcolors.OKGREEN + 'Building data index...' + bcolors.ENDC)
     data_index = []
@@ -206,35 +206,42 @@ def train_epoch(model, index, split=0.8):
     random_batch_order = list(range(start, len(index[0].batches_processed)))
     random.shuffle(random_batch_order)
     for b in random_batch_order:
-        # Iterate over the files in a random order.
-        random_file_order = list(range(len(index)))
-        random.shuffle(random_file_order)
-        for f in random_file_order:
-            # Get the file info.
-            file_info = index[f]
-
-            print(bcolors.BOLD + "Training on file", file_info.local_path, ", batch", str(b) + bcolors.ENDC)
-
+        # Accumulate batch from each parameter file.
+        x = []
+        y = []
+        for file_info in index:
             # Get the training pair of clean and distorted data for this file
             # info and batch struct.
-            x, y = get_input_processed_pair(model, file_info, b, len(file_info.batches_processed))
-
-            # Shuffle inputs and ground truth in the same order.
-            shuffle_order = list(range(x.shape[0]))
-            random.shuffle(shuffle_order)
-            x = x[shuffle_order,:,:]
-            y = y[shuffle_order,:,:]
+            x_f, y_f = get_input_processed_pair(model, file_info, b, len(file_info.batches_processed))
 
             # Tile parameters to be the same dimensions as x.
-            params = np.tile(file_info.parameters, x.shape)
+            params = np.tile(file_info.parameters, x_f.shape)
             # Stitch the parameters vector onto the clean data as new channels.
-            x = np.concatenate([x, params], axis=2)
+            x_f = np.concatenate([x_f, params], axis=2)
 
-            # Train the model on this batch.
-            train_batch(model, np.array(x, dtype=np.float32), np.array(y, dtype=np.float32))
+            x.append(x_f)
+            y.append(y_f)
 
             # Set flag to true indicating that this was processed.
             file_info.batches_processed[b] = True
+
+        print(bcolors.BOLD + "Training on batch ", str(b) + bcolors.ENDC)
+
+        x = np.concatenate(x, axis=0)
+        y = np.concatenate(y, axis=0)
+
+        print("x shape:", x.shape)
+        print("y shape:", y.shape)
+
+        # Shuffle inputs and ground truth in the same order.
+        shuffle_order = list(range(x.shape[0]))
+        random.shuffle(shuffle_order)
+        x = x[shuffle_order,:,:]
+        y = y[shuffle_order,:,:]
+
+        # Train the model on this batch.
+        train_batch(model, np.array(x, dtype=np.float32), np.array(y, dtype=np.float32))
+
 
 # @brief: Trains the model on the data in the folder data_path for specified
 # number of epochs. Checkpoints model after every epoch.
