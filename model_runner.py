@@ -275,7 +275,7 @@ def train(model, data_path, weight_store_path, epochs, start=0.2, end=1.0):
         print(bcolors.BOLD + bcolors.OKGREEN + \
             "Loss on test data for epoch " + str(i) + ":", \
             loss, bcolors.ENDC)
-            print('')
+        print('')
 
     print(bcolors.BOLD + bcolors.OKGREEN + "DONE TRAINING" + bcolors.ENDC)
 
