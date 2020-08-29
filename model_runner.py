@@ -207,6 +207,7 @@ def train_epoch(model, index, start=0.2, end=1.0):
     random_batch_order = list(range(idx_start, idx_end))
     random.shuffle(random_batch_order)
     for b_i in range(len(random_batch_order)):
+        print('')
         print(bcolors.BOLD + "Training on batch", b_i, "of total", str(len(random_batch_order)) + bcolors.ENDC)
 
         # Accumulate batch from each parameter file.
@@ -243,11 +244,11 @@ def train_epoch(model, index, start=0.2, end=1.0):
         # Do a test.
         test_width = 0.025
         test_start = start + random.random() * ((end - test_width) - start)
-        print("test start", test_start)
         loss = test(model, index=index, start=test_start, end=test_start+test_width)
         print(bcolors.BOLD + bcolors.OKGREEN + \
             "Loss on test data for batch " + str(b_i) + ":", \
             loss, bcolors.ENDC)
+        print('')
 
 
 # @brief: Trains the model on the data in the folder data_path for specified
@@ -274,6 +275,7 @@ def train(model, data_path, weight_store_path, epochs, start=0.2, end=1.0):
         print(bcolors.BOLD + bcolors.OKGREEN + \
             "Loss on test data for epoch " + str(i) + ":", \
             loss, bcolors.ENDC)
+            print('')
 
     print(bcolors.BOLD + bcolors.OKGREEN + "DONE TRAINING" + bcolors.ENDC)
 
@@ -293,9 +295,6 @@ def test_batch(model, x, y, mini_batch_size=32):
         # TODO: squeezing here won't work for stereo!!
         loss = model.loss(model_prediction, tf.squeeze(ground_truth)) / mini_batch_size
 
-        if (i % 100 == 0):
-            print("loss on test mini-batch " + str(i) + ":", loss)
-
         total_loss += loss
     return total_loss / float(int(x.shape[0]/mini_batch_size))
 
@@ -311,12 +310,8 @@ def test(model, data_path=None, index=None, start=0.0, end=0.2):
     i = 0
     start = int(start * (len(index[0].batches_processed)))
     end = int(end * (len(index[0].batches_processed)))
-    print("start", start)
-    print("end", end)
     for b in range(start, end):
         for file_info in index:
-            print(bcolors.BOLD + "Testing on file", file_info.local_path, ", batch", str(b) + bcolors.ENDC)
-
             # Get the training pair of clean and distorted data for this file
             # info and batch struct.
             x, y = get_input_processed_pair(model, file_info, b, len(file_info.batches_processed))
