@@ -318,7 +318,7 @@ def main():
             weight_store_path=args.weight_store_path,
             epochs=args.epochs)
 
-    # TODO: test the model.
+    # Test the model.
     if (args.mode == 'TEST' or args.mode == 'TRAIN'):
         print(bcolors.BOLD + bcolors.OKGREEN + "Computing loss on test data." + bcolors.ENDC)
         loss = test(model, args.data_path)
