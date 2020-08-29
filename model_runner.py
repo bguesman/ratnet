@@ -7,6 +7,7 @@ import tensorflow as tf
 import wavio
 import argparse
 from audio_device_model import AudioDeviceModel
+import time
 
 # @brief: Utility class for printing different colors to the terminal.
 class bcolors:
@@ -157,9 +158,17 @@ def get_input_processed_pair(model, file_info, batch, total_batches):
     y = y.astype(np.float32, order='C') / 32768.0
     x = x.astype(np.float32, order='C') / 32768.0
 
-    # TODO: this is fucking SLOW!
-    x = np.array([x[i*model.frame_size:model.R+(i+1)*model.frame_size] for i in range(int((x.shape[0]-model.R)/model.frame_size))])
-    y = np.array([y[i*model.frame_size:(i+1)*model.frame_size] for i in range(int(y.shape[0]/model.frame_size))])
+    # determine shape of final output
+    new_x_shape = (int((x.shape[0]-model.R)/model.frame_size), model.frame_size + model.R)
+    new_y_shape = (int((y.shape[0])/model.frame_size), model.frame_size)
+
+    # Max: stride which gives a new view into array. I'm not sure if this "view" change will cause problems down the road
+    # If so we can just add a .copy() statement here, but I don't see why it would cause problems. The documentation does
+    # have warnings for this though.
+    x = np.lib.stride_tricks.as_strided(x, new_x_shape, (model.frame_size*4, 4))
+    x = np.expand_dims(x, axis=2)
+    y = np.lib.stride_tricks.as_strided(y, new_y_shape, (model.frame_size*4, 4))
+    y = np.expand_dims(y, axis=2)
 
     return x, y
 
