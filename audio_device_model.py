@@ -9,7 +9,7 @@ Brad: This class is where we define the network itself as an object.
 """
 
 class AudioDeviceModel(tf.keras.Model):
-    def __init__(self):
+    def __init__(self, learning_rate=1e-3, frame_size=128):
 
         # Brad: I don't know why this is here, but I'm afraid to touch it.
         ######vvv DO NOT CHANGE vvvv##############
@@ -17,10 +17,10 @@ class AudioDeviceModel(tf.keras.Model):
         ######^^^ DO NOT CHANGE ^^^##################
 
         # Define the optimizer we want to use to train the model.
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
         # How many samples we are trying to predict at once.
-        self.frame_size = 128
+        self.frame_size = frame_size
 
         # Set the parameters for each convolutional layer.
         self.d = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
@@ -28,7 +28,7 @@ class AudioDeviceModel(tf.keras.Model):
         self.chan = [8 for _ in self.d]
 
         # Compute the receptive field.
-        self.R = sum(d * k for d, k in zip(self.d, self.k)) + 1
+        self.R = sum(d * (k - 1) for d, k in zip(self.d, self.k)) + 1
 
         # Layer input mixers.
         self.io = []
@@ -41,10 +41,6 @@ class AudioDeviceModel(tf.keras.Model):
             # Convolutional layer.
             self.c.append(tf.keras.layers.Conv1D(filters=self.chan[i],
                 kernel_size=self.k[i], dilation_rate=self.d[i], padding="causal"))
-
-            # Convolution layers for controllable user variables
-            # self.control_layers.append(tf.keras.layers.Conv1D(filters=self.chan[i],
-            #     kernel_size=1, padding="causal"))
 
             # IO mixer (convolutional layer with kernel size 1). Final
             # layer does not need one.
