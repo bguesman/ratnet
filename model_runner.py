@@ -208,6 +208,12 @@ def train_epoch(model, index):
             # info and batch struct.
             x, y = get_training_pair(model, file_info, b, len(file_info.batches_processed))
 
+            # Shuffle.
+            shuffle_order = list(range(x.shape[0]))
+            random.shuffle(shuffle_order)
+            x = x[shuffle_order,:,:]
+            y = y[shuffle_order,:,:]
+
             # Tile parameters to be the same dimensions as x.
             params = np.tile(file_info.parameters, x.shape)
             # Stitch the parameters vector onto the clean data as new channels.
