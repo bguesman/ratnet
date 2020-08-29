@@ -202,9 +202,9 @@ def train_epoch(model, index, start=0.2, end=1.0):
     # TODO: To make this fully random we could create some kind of matrix
     # of iteration order. Right now it doesn't really go through in a random
     # order.
-    start = int(start * len(index[0].batches_processed))
-    end = int(end * len(index[0].batches_processed))
-    random_batch_order = list(range(start, end))
+    idx_start = int(start * len(index[0].batches_processed))
+    idx_end = int(end * len(index[0].batches_processed))
+    random_batch_order = list(range(idx_start, idx_end))
     random.shuffle(random_batch_order)
     for b_i in range(len(random_batch_order)):
         print(bcolors.BOLD + "Training on batch", b_i, "of total", str(len(random_batch_order)) + bcolors.ENDC)
