@@ -230,9 +230,6 @@ def train_epoch(model, index, split=0.8):
         x = np.concatenate(x, axis=0)
         y = np.concatenate(y, axis=0)
 
-        print("x shape:", x.shape)
-        print("y shape:", y.shape)
-
         # Shuffle inputs and ground truth in the same order.
         shuffle_order = list(range(x.shape[0]))
         random.shuffle(shuffle_order)
