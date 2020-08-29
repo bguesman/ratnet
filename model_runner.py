@@ -197,13 +197,14 @@ def train_batch(model, x, y, mini_batch_size=32):
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
 # @brief: Trains model for one epoch on files in data index index.
-def train_epoch(model, index, split=0.8):
+def train_epoch(model, index, start=0.2, end=1.0):
     # Iterate over the batches in a random order.
     # TODO: To make this fully random we could create some kind of matrix
     # of iteration order. Right now it doesn't really go through in a random
     # order.
-    start = int((1.0-split) * len(index[0].batches_processed))
-    random_batch_order = list(range(start, len(index[0].batches_processed)))
+    start = int(start * len(index[0].batches_processed))
+    end = int(end * len(index[0].batches_processed))
+    random_batch_order = list(range(start, end))
     random.shuffle(random_batch_order)
     for b_i in range(len(random_batch_order)):
         print(bcolors.BOLD + "Training on batch", b_i, "of total", str(len(random_batch_order)) + bcolors.ENDC)
@@ -240,7 +241,9 @@ def train_epoch(model, index, split=0.8):
         train_batch(model, np.array(x, dtype=np.float32), np.array(y, dtype=np.float32))
 
         # Do a test.
-        loss = test(model, index.directory, split=0.05)
+        test_width = 0.025
+        test_start = start + random.random() * ((end - test_width) - start)
+        loss = test(model, index.directory, start=test_start, end=test_start+test_width)
         print(bcolors.BOLD + bcolors.OKGREEN + \
             "Loss on test data for batch " + str(b_i) + ":", \
             loss, bcolors.ENDC)
@@ -248,7 +251,7 @@ def train_epoch(model, index, split=0.8):
 
 # @brief: Trains the model on the data in the folder data_path for specified
 # number of epochs. Checkpoints model after every epoch.
-def train(model, data_path, weight_store_path, epochs, split=0.8):
+def train(model, data_path, weight_store_path, epochs, start=0.2, end=1.0):
     # Get the data index, which is a list of FileInfo objects that specify
     # the path to each file, the parameters associated with the file, and
     # a list of booleans specified whether or not each chunk in the file
@@ -259,14 +262,14 @@ def train(model, data_path, weight_store_path, epochs, split=0.8):
     for i in range(epochs):
         print(bcolors.BOLD + bcolors.OKGREEN + "EPOCH", str(i), bcolors.ENDC)
         # Train for an epoch.
-        train_epoch(model, data_index, split=split)
+        train_epoch(model, data_index, start=start, end=end)
         # Clear out the data index.
         clear_data_index(data_index)
         # Save the weights.
         if weight_store_path is not None:
             model.save_weights(weight_store_path + "_epoch_" + str(i), save_format='tf')
         # Do a test.
-        loss = test(model, data_path)
+        loss = test(model, index=data_index)
         print(bcolors.BOLD + bcolors.OKGREEN + \
             "Loss on test data for epoch " + str(i) + ":", \
             loss, bcolors.ENDC)
@@ -296,16 +299,18 @@ def test_batch(model, x, y, mini_batch_size=32):
     return total_loss / float(int(x.shape[0]/mini_batch_size))
 
 # @brief: tests the model.
-def test(model, data_path, split=0.2):
+def test(model, data_path=None, index=None, start=0.0, end=0.2):
     # Get the data index, which is a list of FileInfo objects that specify
     # the path to each file, the parameters associated with the file, and
     # a list of booleans specified whether or not each chunk in the file
     # has been processed.
-    index = get_data_index(data_path)
+    if index == None:
+        index = get_data_index(data_path)
     total_loss = 0.0
     i = 0
-    end = int(split * (len(index[0].batches_processed)))
-    for b in range(end):
+    start = int(start * (len(index[0].batches_processed)))
+    end = int(end * (len(index[0].batches_processed)))
+    for b in range(start, end):
         for file_info in index:
             print(bcolors.BOLD + "Testing on file", file_info.local_path, ", batch", str(b) + bcolors.ENDC)
 
@@ -345,7 +350,7 @@ def main():
     # Test the model.
     if (args.mode == 'TEST' or args.mode == 'TRAIN'):
         print(bcolors.BOLD + bcolors.OKGREEN + "Computing loss on test data." + bcolors.ENDC)
-        loss = test(model, args.data_path)
+        loss = test(model, data_path=args.data_path)
         print(bcolors.BOLD + bcolors.OKGREEN + "Final loss on test data:", loss, bcolors.ENDC)
 
     # TODO: run the model.
