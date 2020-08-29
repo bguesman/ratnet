@@ -331,27 +331,6 @@ def main():
 if __name__ == '__main__':
    main()
 
-
-# def test(model, test_inputs, test_ground_truth, batch_size=32):
-#     """
-#     This computes the average loss across the testing sample.
-#     """
-#     total_loss = 0
-#     for i in range(0, int(test_inputs.shape[0]/batch_size)):
-#         # Grab the input and corresponding ground truth. TODO: we can batch
-#         # this if we want to make it faster.
-#         batch_start = i*batch_size
-#         batch_end = (i+1)*batch_size
-#         input = test_inputs[batch_start:batch_end]
-#         ground_truth = test_ground_truth[batch_start:batch_end]
-#
-#         # Run the model on the input to get the predicted output.
-#         model_prediction = model(input)
-#
-#         # Compute the loss.
-#         total_loss += model.loss(model_prediction, ground_truth)
-#     return total_loss / float(int(test_inputs.shape[0]/batch_size))
-#
 # def test_wav(model, test_inputs, out_path, batch_size=32):
 #     output = np.zeros((test_inputs.shape[0], 128))
 #     for i in range(0, int(test_inputs.shape[0]/batch_size)):
