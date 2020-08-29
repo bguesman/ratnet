@@ -249,7 +249,7 @@ def train(model, data_path, weight_store_path, epochs, split=0.8):
         # Do a test.
         loss = test(model, data_path)
         print(bcolors.BOLD + bcolors.OKGREEN + \
-            "Loss on test data for epoch" + str(i) + ":", \
+            "Loss on test data for epoch " + str(i) + ":", \
             loss, bcolors.ENDC)
 
     print(bcolors.BOLD + bcolors.OKGREEN + "DONE TRAINING" + bcolors.ENDC)
@@ -324,7 +324,7 @@ def main():
     if (args.mode == 'TEST' or args.mode == 'TRAIN'):
         print(bcolors.BOLD + bcolors.OKGREEN + "Computing loss on test data." + bcolors.ENDC)
         loss = test(model, args.data_path)
-        print(bcolors.BOLD + bcolors.OKGREEN + "Loss on test data:", loss, bcolors.ENDC)
+        print(bcolors.BOLD + bcolors.OKGREEN + "Final loss on test data:", loss, bcolors.ENDC)
 
     # TODO: run the model.
     if (args.mode == 'RUN'):
