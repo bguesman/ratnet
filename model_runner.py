@@ -243,7 +243,7 @@ def train_epoch(model, index, start=0.2, end=1.0):
         # Do a test.
         test_width = 0.025
         test_start = start + random.random() * ((end - test_width) - start)
-        loss = test(model, index.directory, start=test_start, end=test_start+test_width)
+        loss = test(model, index=index, start=test_start, end=test_start+test_width)
         print(bcolors.BOLD + bcolors.OKGREEN + \
             "Loss on test data for batch " + str(b_i) + ":", \
             loss, bcolors.ENDC)
@@ -293,7 +293,7 @@ def test_batch(model, x, y, mini_batch_size=32):
         loss = model.loss(model_prediction, tf.squeeze(ground_truth)) / mini_batch_size
 
         if (i % 100 == 0):
-            print("minibatch loss on epoch " + str(i) + ":", loss)
+            print("loss on test mini-batch " + str(i) + ":", loss)
 
         total_loss += loss
     return total_loss / float(int(x.shape[0]/mini_batch_size))
