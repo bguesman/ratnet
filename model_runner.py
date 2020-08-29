@@ -248,6 +248,23 @@ def train(model, data_path, weight_store_path, epochs):
 
     print(bcolors.BOLD + bcolors.OKGREEN + "DONE TRAINING" + bcolors.ENDC)
 
+# @brief: tests model for one batch with inputs x and ground truth y.
+# Computes TOTAL loss, not AVERAGE loss.
+def test_batch(model, x, y, mini_batch_size=32):
+    # Loop through the batch splitting into mini batches.
+    total_loss = 0
+    for i in range(0, int(x.shape[0]/mini_batch_size)):
+        # Grab the input and corresponding ground truth batches.
+        batch_start = i*mini_batch_size
+        batch_end = (i+1)*mini_batch_size
+        input = x[batch_start:batch_end]
+        ground_truth = y[batch_start:batch_end]
+
+        model_prediction = model(input)
+        # TODO: squeezing here won't work for stereo!!
+        total_loss += model.loss(model_prediction, tf.squeeze(ground_truth))
+    return total_loss
+
 # @brief: tests the model.
 def test(model, data_path):
     # Get the data index, which is a list of FileInfo objects that specify
@@ -274,7 +291,7 @@ def test(model, data_path):
             model_prediction = model(np.array(x, dtype=np.float32))
             # TODO: squeezing here won't work for stereo!!
             # Divide by the number of items to make sure this is average loss.
-            total_loss += model.loss(model_prediction, tf.squeeze(y)) / model_prediction.shape[0]
+            total_loss += test_batch(model, x, y) / model_prediction.shape[0]
             i += 1
     return total_loss / i
 
