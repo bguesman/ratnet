@@ -243,6 +243,7 @@ def train_epoch(model, index, start=0.2, end=1.0):
         # Do a test.
         test_width = 0.025
         test_start = start + random.random() * ((end - test_width) - start)
+        print("test start", test_start)
         loss = test(model, index=index, start=test_start, end=test_start+test_width)
         print(bcolors.BOLD + bcolors.OKGREEN + \
             "Loss on test data for batch " + str(b_i) + ":", \
@@ -310,6 +311,8 @@ def test(model, data_path=None, index=None, start=0.0, end=0.2):
     i = 0
     start = int(start * (len(index[0].batches_processed)))
     end = int(end * (len(index[0].batches_processed)))
+    print("start", start)
+    print("end", end)
     for b in range(start, end):
         for file_info in index:
             print(bcolors.BOLD + "Testing on file", file_info.local_path, ", batch", str(b) + bcolors.ENDC)
