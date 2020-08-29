@@ -298,7 +298,8 @@ def test_batch(model, x, y, mini_batch_size=32):
         total_loss += loss
     return total_loss / float(int(x.shape[0]/mini_batch_size))
 
-# @brief: tests the model.
+# @brief: tests the model on data specified by data_path or
+# precomputed data index.
 def test(model, data_path=None, index=None, start=0.0, end=0.2):
     # Get the data index, which is a list of FileInfo objects that specify
     # the path to each file, the parameters associated with the file, and
@@ -327,6 +328,53 @@ def test(model, data_path=None, index=None, start=0.0, end=0.2):
         i += 1.0
     return total_loss / i
 
+# @brief: runs the model on an input signal, writes out result to
+# specified output path.
+def run(model, signal_path, out_path, parameters):
+    # Read in the data.
+    x = wavio.read(signal_path).data
+    # Pad the data.
+    x = np.pad(x, ((model.R, x.shape[0] % model.frame_size), (0, 0)), 'constant', constant_values=(0, 0))
+    # Normalize to [-1.0, 1.0]
+    x = x.astype(np.float32, order='C') / 32768.0
+    # determine shape of final output
+    new_x_shape = (int((x.shape[0]-model.R)/model.frame_size), model.frame_size + model.R)
+    # Max: stride which gives a new view into array. I'm not sure if this "view" change will cause problems down the road
+    # If so we can just add a .copy() statement here, but I don't see why it would cause problems. The documentation does
+    # have warnings for this though.
+    x = np.lib.stride_tricks.as_strided(x, new_x_shape, (model.frame_size*4, 4))
+    x = np.expand_dims(x, axis=2)
+
+    output = []
+    batch_size = 32
+    for i in range(int(x.shape[0]/batch_size)):
+        # Collect batch.
+        batch_start = i*mini_batch_size
+        batch_end = (i+1)*mini_batch_size
+        input = x[batch_start:batch_end]
+
+        # Tile parameters to be the same dimensions as x.
+        params = np.tile(parameters, input.shape)
+        # Stitch the parameters vector onto the clean data as new channels.
+        input = np.concatenate([input, params], axis=2)
+
+        # Run the model.
+        model_prediction = model(input)
+
+        # Append to output list.
+        output.append(model_prediction)
+
+    # Output is a list of n [128, out_channels] shape tensors. Concatenate them
+    # along axis 0 to get shape [128 * n, out_channels]
+    output = np.concatenate(output, axis=0)
+
+    # Apply clipping and scale to int16 range.
+    output = np.clip(output, -1.0, 1.0) * 32768.0
+
+    # Convert to int-16 and write out.
+    output = output.astype(np.int16, order='C')
+    wavio.write(out_path, output, 44100)
+
 # @brief: main function.
 def main():
     # Parse arguments from command line. This function guarantees that we
@@ -353,7 +401,7 @@ def main():
 
     # TODO: run the model.
     if (args.mode == 'RUN'):
-        pass
+        run(model, args.signal_path, args.out_path, np.array([0.5]))
 
 if __name__ == '__main__':
    main()
