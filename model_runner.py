@@ -254,7 +254,8 @@ def test_batch(model, x, y, mini_batch_size=32):
     # Loop through the batch splitting into mini batches.
     total_loss = 0
     for i in range(0, int(x.shape[0]/mini_batch_size)):
-        print("minibatch", i)
+        if (i % 100 == 0):
+            print("minibatch", i)
         # Grab the input and corresponding ground truth batches.
         batch_start = i*mini_batch_size
         batch_end = (i+1)*mini_batch_size
