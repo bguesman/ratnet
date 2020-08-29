@@ -240,7 +240,7 @@ def train_epoch(model, index, split=0.8):
         train_batch(model, np.array(x, dtype=np.float32), np.array(y, dtype=np.float32))
 
         # Do a test.
-        loss = test(model, data_path, split=0.05)
+        loss = test(model, index.directory, split=0.05)
         print(bcolors.BOLD + bcolors.OKGREEN + \
             "Loss on test data for batch " + str(b_i) + ":", \
             loss, bcolors.ENDC)
