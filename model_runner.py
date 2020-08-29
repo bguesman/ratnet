@@ -255,13 +255,11 @@ def train(model, data_path, weight_store_path, epochs, split=0.8):
     print(bcolors.BOLD + bcolors.OKGREEN + "DONE TRAINING" + bcolors.ENDC)
 
 # @brief: tests model for one batch with inputs x and ground truth y.
-# Computes TOTAL loss, not AVERAGE loss.
+# Computes AVERAGE loss.
 def test_batch(model, x, y, mini_batch_size=32):
     # Loop through the batch splitting into mini batches.
     total_loss = 0
     for i in range(0, int(x.shape[0]/mini_batch_size)):
-        if (i % 100 == 0):
-            print("minibatch", i)
         # Grab the input and corresponding ground truth batches.
         batch_start = i*mini_batch_size
         batch_end = (i+1)*mini_batch_size
@@ -270,8 +268,13 @@ def test_batch(model, x, y, mini_batch_size=32):
 
         model_prediction = model(input)
         # TODO: squeezing here won't work for stereo!!
-        total_loss += model.loss(model_prediction, tf.squeeze(ground_truth))
-    return total_loss
+        loss = model.loss(model_prediction, tf.squeeze(ground_truth)) / mini_batch_size
+
+        if (i % 100 == 0):
+            print("minibatch loss on epoch " + str(i) + ":", loss)
+
+        total_loss += loss
+    return total_loss / float(int(x.shape[0]/mini_batch_size))
 
 # @brief: tests the model.
 def test(model, data_path, split=0.2):
@@ -299,8 +302,8 @@ def test(model, data_path, split=0.2):
 
             # TODO: squeezing here won't work for stereo!!
             # Divide by the number of items to make sure this is average loss.
-            total_loss += test_batch(model, x, y) / x.shape[0]
-            i += 1
+            total_loss += test_batch(model, x, y)
+        i += 1.0
     return total_loss / i
 
 # @brief: main function.
