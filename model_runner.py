@@ -288,8 +288,6 @@ def test(model, data_path):
             # Stitch the parameters vector onto the clean data as new channels.
             x = np.concatenate([x, params], axis=2)
 
-            # Test the model on this batch.
-            model_prediction = model(np.array(x, dtype=np.float32))
             # TODO: squeezing here won't work for stereo!!
             # Divide by the number of items to make sure this is average loss.
             total_loss += test_batch(model, x, y) / model_prediction.shape[0]
