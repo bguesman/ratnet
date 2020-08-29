@@ -188,12 +188,13 @@ def train_batch(model, x, y, mini_batch_size=32):
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
 # @brief: Trains model for one epoch on files in data index index.
-def train_epoch(model, index):
+def train_epoch(model, index, split=0.8):
     # Iterate over the batches in a random order.
     # TODO: To make this fully random we could create some kind of matrix
     # of iteration order. Right now it doesn't really go through in a random
     # order.
-    random_batch_order = list(range(len(index[0].batches_processed)))
+    end = int(split * len(index[0].batches_processed))
+    random_batch_order = list(range(end))
     random.shuffle(random_batch_order)
     for b in random_batch_order:
         # Iterate over the files in a random order.
@@ -228,7 +229,7 @@ def train_epoch(model, index):
 
 # @brief: Trains the model on the data in the folder data_path for specified
 # number of epochs. Checkpoints model after every epoch.
-def train(model, data_path, weight_store_path, epochs):
+def train(model, data_path, weight_store_path, epochs, split=0.8):
     # Get the data index, which is a list of FileInfo objects that specify
     # the path to each file, the parameters associated with the file, and
     # a list of booleans specified whether or not each chunk in the file
@@ -239,7 +240,7 @@ def train(model, data_path, weight_store_path, epochs):
     for i in range(epochs):
         print(bcolors.BOLD + bcolors.OKGREEN + "EPOCH", str(i), bcolors.ENDC)
         # Train for an epoch.
-        train_epoch(model, data_index)
+        train_epoch(model, data_index, split=split)
         # Clear out the data index.
         clear_data_index(data_index)
         # Save the weights.
@@ -268,7 +269,7 @@ def test_batch(model, x, y, mini_batch_size=32):
     return total_loss
 
 # @brief: tests the model.
-def test(model, data_path):
+def test(model, data_path, split=0.2):
     # Get the data index, which is a list of FileInfo objects that specify
     # the path to each file, the parameters associated with the file, and
     # a list of booleans specified whether or not each chunk in the file
@@ -276,7 +277,9 @@ def test(model, data_path):
     index = get_data_index(data_path)
     total_loss = 0.0
     i = 0
-    for b in range(len(index[0].batches_processed)):
+    start = int((1.0-split) * (len(index[0].batches_processed)))
+    end = len(index[0].batches_processed)
+    for b in range(start, end):
         for file_info in index:
             print(bcolors.BOLD + "Testing on file", file_info.local_path, ", batch", str(b) + bcolors.ENDC)
 
@@ -287,7 +290,7 @@ def test(model, data_path):
             # Tile parameters to be the same dimensions as x.
             params = np.tile(file_info.parameters, x.shape)
             # Stitch the parameters vector onto the clean data as new channels.
-            x = np.concatenate([x, params], axis=2)
+            x = np.array(np.concatenate([x, params], axis=2), dtype=np.float32)
 
             # TODO: squeezing here won't work for stereo!!
             # Divide by the number of items to make sure this is average loss.
