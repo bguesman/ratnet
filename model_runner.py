@@ -193,8 +193,8 @@ def train_epoch(model, index, split=0.8):
     # TODO: To make this fully random we could create some kind of matrix
     # of iteration order. Right now it doesn't really go through in a random
     # order.
-    end = int((1.0-split) * len(index[0].batches_processed))
-    random_batch_order = list(range(end))
+    start = int((1.0-split) * len(index[0].batches_processed))
+    random_batch_order = list(range(start, len(index[0].batches_processed)))
     random.shuffle(random_batch_order)
     for b in random_batch_order:
         # Iterate over the files in a random order.
@@ -285,9 +285,8 @@ def test(model, data_path, split=0.2):
     index = get_data_index(data_path)
     total_loss = 0.0
     i = 0
-    start = int(split * (len(index[0].batches_processed)))
-    end = len(index[0].batches_processed)
-    for b in range(start, end):
+    end = int(split * (len(index[0].batches_processed)))
+    for b in range(end):
         for file_info in index:
             print(bcolors.BOLD + "Testing on file", file_info.local_path, ", batch", str(b) + bcolors.ENDC)
 
