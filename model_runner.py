@@ -191,7 +191,7 @@ def train_batch(model, x, y, mini_batch_size=32):
             loss = model.loss(model_prediction, tf.squeeze(ground_truth)) / mini_batch_size
 
         if (i % 100 == 0):
-            print("Loss on iteration " + str(i) + ": " + str(loss))
+            print("Loss on mini-batch " + str(i) + ": " + str(loss))
 
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -205,14 +205,16 @@ def train_epoch(model, index, split=0.8):
     start = int((1.0-split) * len(index[0].batches_processed))
     random_batch_order = list(range(start, len(index[0].batches_processed)))
     random.shuffle(random_batch_order)
-    for b in random_batch_order:
+    for b_i in range(len(random_batch_order)):
+        print(bcolors.BOLD + "Training on batch", b_i, "of total", str(len(random_batch_order)) + bcolors.ENDC)
+
         # Accumulate batch from each parameter file.
         x = []
         y = []
         for file_info in index:
             # Get the training pair of clean and distorted data for this file
             # info and batch struct.
-            x_f, y_f = get_input_processed_pair(model, file_info, b, len(file_info.batches_processed))
+            x_f, y_f = get_input_processed_pair(model, file_info, random_batch_order[b_i], len(file_info.batches_processed))
 
             # Tile parameters to be the same dimensions as x.
             params = np.tile(file_info.parameters, x_f.shape)
@@ -223,9 +225,7 @@ def train_epoch(model, index, split=0.8):
             y.append(y_f)
 
             # Set flag to true indicating that this was processed.
-            file_info.batches_processed[b] = True
-
-        print(bcolors.BOLD + "Training on batch ", str(b) + bcolors.ENDC)
+            file_info.batches_processed[random_batch_order[b_i]] = True
 
         x = np.concatenate(x, axis=0)
         y = np.concatenate(y, axis=0)
@@ -238,6 +238,12 @@ def train_epoch(model, index, split=0.8):
 
         # Train the model on this batch.
         train_batch(model, np.array(x, dtype=np.float32), np.array(y, dtype=np.float32))
+
+        # Do a test.
+        loss = test(model, data_path)
+        print(bcolors.BOLD + bcolors.OKGREEN + \
+            "Loss on test data for batch " + str(b_i) + ":", \
+            loss, bcolors.ENDC)
 
 
 # @brief: Trains the model on the data in the folder data_path for specified
