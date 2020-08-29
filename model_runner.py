@@ -129,7 +129,7 @@ def clear_data_index(index):
 
 # @brief: Given a file info object and batch number, returns the clean and
 # processed batch.
-def get_training_pair(model, file_info, batch, total_batches):
+def get_input_processed_pair(model, file_info, batch, total_batches):
     # Get the clean file path by searching through the file's parent directory.
     clean_path = None
     for possibly_clean_file in os.listdir(file_info.directory):
@@ -178,7 +178,8 @@ def train_batch(model, x, y, mini_batch_size=32):
         with tf.GradientTape(persistent=True) as tape:
             model_prediction = model(input)
             # TODO: squeezing here won't work for stereo!!
-            loss = model.loss(model_prediction, tf.squeeze(ground_truth))
+            # Divide by mini batch size to compute average loss across batch.
+            loss = model.loss(model_prediction, tf.squeeze(ground_truth)) / mini_batch_size
 
         if (i % 100 == 0):
             print("Loss on iteration " + str(i) + ": " + str(loss))
@@ -206,9 +207,9 @@ def train_epoch(model, index):
 
             # Get the training pair of clean and distorted data for this file
             # info and batch struct.
-            x, y = get_training_pair(model, file_info, b, len(file_info.batches_processed))
+            x, y = get_input_processed_pair(model, file_info, b, len(file_info.batches_processed))
 
-            # Shuffle.
+            # Shuffle inputs and ground truth in the same order.
             shuffle_order = list(range(x.shape[0]))
             random.shuffle(shuffle_order)
             x = x[shuffle_order,:,:]
@@ -247,6 +248,36 @@ def train(model, data_path, weight_store_path, epochs):
 
     print(bcolors.BOLD + bcolors.OKGREEN + "DONE TRAINING" + bcolors.ENDC)
 
+# @brief: tests the model.
+def test(model, data_path):
+    # Get the data index, which is a list of FileInfo objects that specify
+    # the path to each file, the parameters associated with the file, and
+    # a list of booleans specified whether or not each chunk in the file
+    # has been processed.
+    index = get_data_index(data_path)
+    total_loss = 0.0
+    i = 0
+    for b in range(len(index[0].batches_processed)):
+        for file_info in index:
+            print(bcolors.BOLD + "Testing on file", file_info.local_path, ", batch", str(b) + bcolors.ENDC)
+
+            # Get the training pair of clean and distorted data for this file
+            # info and batch struct.
+            x, y = get_input_processed_pair(model, file_info, b, len(file_info.batches_processed))
+
+            # Tile parameters to be the same dimensions as x.
+            params = np.tile(file_info.parameters, x.shape)
+            # Stitch the parameters vector onto the clean data as new channels.
+            x = np.concatenate([x, params], axis=2)
+
+            # Test the model on this batch.
+            model_prediction = model(np.array(x, dtype=np.float32))
+            # TODO: squeezing here won't work for stereo!!
+            # Divide by the number of items to make sure this is average loss.
+            total_loss += model.loss(model_prediction, tf.squeeze(y)) / model_prediction.shape[0]
+            i += 1
+    return total_loss / i
+
 # @brief: main function.
 def main():
     # Parse arguments from command line. This function guarantees that we
@@ -264,7 +295,9 @@ def main():
 
     # TODO: test the model.
     if (args.mode == 'TEST' or args.mode == 'TRAIN'):
-        pass
+        print(bcolors.BOLD + bcolors.OKGREEN + "Computing loss on test data.")
+        loss = test(model, args.data_path)
+        print(bcolors.BOLD + bcolors.OKGREEN + "Loss on test data:", loss, bcolors.ENDC)
 
     # TODO: run the model.
     if (args.mode == 'RUN'):
