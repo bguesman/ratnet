@@ -218,7 +218,7 @@ def train_epoch(model, index, start=0.0, end=1.0):
 
     for b_i in range(len(random_batch_order[0])):
         print('')
-        print(bcolors.BOLD + "Training on batch", b_i, "of total", str(len(random_batch_order)) + bcolors.ENDC)
+        print(bcolors.BOLD + "Training on batch", b_i, "of total", str(len(random_batch_order[0])) + bcolors.ENDC)
 
         # Accumulate batch from each parameter file.
         x = []
