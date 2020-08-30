@@ -377,6 +377,7 @@ def run(model, signal_path, out_path, parameters):
         input = np.concatenate([input, params], axis=2)
 
         # Run the model.
+        # TODO: reshape won't work for stereo.
         model_prediction = tf.reshape(model(input), [-1])
 
         print("model prediction shape: ", model_prediction.shape)
@@ -422,7 +423,7 @@ def main():
 
     # TODO: run the model.
     if (args.mode == 'RUN'):
-        run(model, args.signal_path, args.out_path, np.array([0.5]))
+        run(model, args.signal_path, args.out_path, np.array([0.99]))
         print(bcolors.BOLD + bcolors.OKGREEN + "Wrote out result to", args.out_path, bcolors.ENDC)
 
 if __name__ == '__main__':
