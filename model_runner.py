@@ -423,7 +423,7 @@ def main():
 
     # TODO: run the model.
     if (args.mode == 'RUN'):
-        run(model, args.signal_path, args.out_path, np.array([0.99]))
+        run(model, args.signal_path, args.out_path, np.array([0.01]))
         print(bcolors.BOLD + bcolors.OKGREEN + "Wrote out result to", args.out_path, bcolors.ENDC)
 
 if __name__ == '__main__':
