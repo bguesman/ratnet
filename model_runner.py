@@ -377,7 +377,7 @@ def run(model, signal_path, out_path, parameters):
         input = np.concatenate([input, params], axis=2)
 
         # Run the model.
-        model_prediction = model(input)
+        model_prediction = tf.reshape(model(input), [-1])
 
         print("model prediction shape: ", model_prediction.shape)
 
