@@ -379,6 +379,8 @@ def run(model, signal_path, out_path, parameters):
         # Run the model.
         model_prediction = model(input)
 
+        print("model prediction shape: ", model_prediction.shape)
+
         # Append to output list.
         output.append(model_prediction)
 
