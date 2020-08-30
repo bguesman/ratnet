@@ -88,7 +88,7 @@ class AudioDeviceModel(tf.keras.Model):
         hpf_prediction = hpf(prediction)
 
         # Compute normalized L2 loss.
-        if (tf.reduce_sum(hpf_ground_truth ** 2) < 0.001):
+        if (tf.reduce_sum(hpf_ground_truth ** 2) < 0.0000000001):
             # Avoid dividing by zero and spurious loss calculations.
             return tf.reduce_sum((hpf_prediction - hpf_ground_truth) ** 2)
         return tf.reduce_sum((hpf_prediction - hpf_ground_truth) ** 2) / tf.reduce_sum(hpf_ground_truth ** 2)
