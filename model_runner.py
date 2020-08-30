@@ -282,9 +282,11 @@ def train(model, data_path, weight_store_path, epochs, start=0.0, end=1.0):
         clear_data_index(data_index)
         # Save the weights.
         if weight_store_path is not None:
-            print(bcolors.OKGREEN + "Saving weights at path ", weight_store_path + bcolors.ENDC)
+            print(bcolors.OKGREEN + "Saving weights at path ", weight_store_path + "..." + bcolors.ENDC)
             model.save_weights(weight_store_path + "_epoch_" + str(i), save_format='tf')
+            print(bcolors.OKGREEN + "Done." + bcolors.ENDC)
         # Do a test on a subset of the training data.
+        print(bcolors.BOLD + "Computing test loss..." + bcolors.ENDC)
         test_width = 0.2
         test_start = start + random.random() * ((end - test_width) - start)
         loss = test(model, index=data_index, start=test_start, end=test_start+test_width)
@@ -365,8 +367,8 @@ def run(model, signal_path, out_path, parameters):
     batch_size = 32
     for i in range(int(x.shape[0]/batch_size)):
         # Collect batch.
-        batch_start = i*mini_batch_size
-        batch_end = (i+1)*mini_batch_size
+        batch_start = i*batch_size
+        batch_end = (i+1)*batch_size
         input = x[batch_start:batch_end]
 
         # Tile parameters to be the same dimensions as x.
