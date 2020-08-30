@@ -385,6 +385,7 @@ def run(model, signal_path, out_path, parameters):
     # Output is a list of n [128, out_channels] shape tensors. Concatenate them
     # along axis 0 to get shape [128 * n, out_channels]
     output = np.concatenate(output, axis=0)
+    print("output shape: ", output.shape)
 
     # Apply clipping and scale to int16 range.
     output = np.clip(output, -1.0, 1.0) * 32768.0
@@ -403,13 +404,13 @@ def main():
     model = setup_model(args)
 
     # Train the model.
-    start = time.time()
     if (args.mode == 'TRAIN'):
+        start = time.time()
         train(model, data_path=args.train_data_path, \
             weight_store_path=args.weight_store_path,
             epochs=args.epochs)
-    end = time.time()
-    print("Training took", (start - end) / 3600, "hours")
+        end = time.time()
+        print("Training took", (start - end) / 3600, "hours")
 
     # Test the model.
     if ((args.mode == 'TEST' or args.mode == 'TRAIN') and args.test_data_path is not None):
@@ -420,6 +421,7 @@ def main():
     # TODO: run the model.
     if (args.mode == 'RUN'):
         run(model, args.signal_path, args.out_path, np.array([0.5]))
+        print(bcolors.BOLD + bcolors.OKGREEN + "Wrote out result to", args.out_path, bcolors.ENDC)
 
 if __name__ == '__main__':
    main()
