@@ -380,8 +380,6 @@ def run(model, signal_path, out_path, parameters):
         # TODO: reshape won't work for stereo.
         model_prediction = tf.reshape(model(input), [-1])
 
-        print("model prediction shape: ", model_prediction.shape)
-
         # Append to output list.
         output.append(model_prediction)
 
