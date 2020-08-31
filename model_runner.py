@@ -403,9 +403,9 @@ def main():
     except ValueError:
       raise BaseException('ERROR: Not connected to a TPU runtime; please see the previous cell in this notebook for instructions!')
 
-    tf.config.experimental_connect_to_cluster(tpu)
+    tf.config.connect_to_cluster(tpu)
     tf.tpu.experimental.initialize_tpu_system(tpu)
-    tpu_strategy = tf.distribute.experimental.TPUStrategy(tpu)
+    tpu_strategy = tf.distribute.TPUStrategy(tpu)
 
     # Parse arguments from command line. This function guarantees that we
     # have everything we need for the mode we are running in.
