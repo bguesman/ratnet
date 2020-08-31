@@ -288,10 +288,10 @@ def train(model, data_path, weight_store_path, epochs, start=0.0, end=1.0):
         # Do a test on a subset of the training data.
         print(bcolors.BOLD + "Computing test loss..." + bcolors.ENDC)
         test_width = 0.2
-        test_start = start + random.random() * ((end - test_width) - start)
+        test_start = 0.1
         loss = test(model, index=data_index, start=test_start, end=test_start+test_width)
         print(bcolors.BOLD + bcolors.OKGREEN + \
-            "Loss on test data for epoch " + str(i) + ":", \
+            "Loss on training subset", str(test_start) + ", " + str(test_end), " for epoch " + str(i) + ":", \
             loss, bcolors.ENDC)
         print('')
 
