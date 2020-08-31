@@ -343,7 +343,7 @@ def test(model, data_path=None, index=None, start=0.0, end=0.2):
             # TODO: squeezing here won't work for stereo!!
             # Divide by the number of items to make sure this is average loss.
             total_loss += test_batch(model, x, y)
-        i += 1.0
+            i += 1.0
     return total_loss / i
 
 # @brief: runs the model on an input signal, writes out result to
