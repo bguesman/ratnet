@@ -56,7 +56,7 @@ class AudioDeviceModel(tf.keras.Model):
     @tf.function
     def call(self, input):
         # Accumulator variable that we'll use to implement skip connections.
-        accumulator = []
+        accumulator = None
         # TODO: for now, the signal is always mono, so we can do this. But
         # if we ever support stereo, this manual split won't work.
         signal = input[:,:,0:1]
@@ -68,7 +68,10 @@ class AudioDeviceModel(tf.keras.Model):
 
             # Add the result to the total output of the network. This is a
             # "skip connection".
-            accumulator.append(layer_output_nonlinear)
+            if accumulator is None:
+                accumulator = layer_output_nonlinear
+            else:
+                accumulator = tf.concat([accumulator, layer_output_nonlinear], axis=2)
             if (i != len(self.c) - 1):
                 # Only compute input if there's a next layer to feed it to.
                 # Blend between the output and input via a 1x1 convolution.
@@ -76,8 +79,7 @@ class AudioDeviceModel(tf.keras.Model):
 
         # Concatenate along the channel dimension and apply the 1x1
         # convolution.
-        mixer_channels = tf.concat(accumulator, axis=2)
-        mixed = self.mixer(mixer_channels)
+        mixed = self.mixer(accumulator)
         # Squeeze out the last few samples and take only the last frame_size
         # frames.
         return tf.squeeze(mixed)[:,-self.frame_size:]

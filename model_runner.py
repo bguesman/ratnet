@@ -221,8 +221,8 @@ def train_epoch(model, index, start=0.0, end=1.0):
         print(bcolors.BOLD + "Training on batch", b_i, "of total", str(len(random_batch_order[0])) + bcolors.ENDC)
 
         # Accumulate batch from each parameter file.
-        x = []
-        y = []
+        x = None
+        y = None
         for f in range(len(index)):
             file_info = index[f]
             # Get the training pair of clean and distorted data for this file
@@ -235,14 +235,15 @@ def train_epoch(model, index, start=0.0, end=1.0):
             # Stitch the parameters vector onto the clean data as new channels.
             x_f = np.concatenate([x_f, params], axis=2)
 
-            x.append(x_f)
-            y.append(y_f)
+            if x is None:
+                x = x_f
+                y = y_f
+            else:
+                x = np.concatenate([x, x_f], axis=0)
+                y = np.concatenate([y, y_f], axis=0)
 
             # Set flag to true indicating that this was processed.
             file_info.batches_processed[f_batch] = True
-
-        x = np.concatenate(x, axis=0)
-        y = np.concatenate(y, axis=0)
 
         # Shuffle inputs and ground truth in the same order.
         shuffle_order = list(range(x.shape[0]))
@@ -363,7 +364,7 @@ def run(model, signal_path, out_path, parameters):
     x = np.lib.stride_tricks.as_strided(x, new_x_shape, (model.frame_size*4, 4))
     x = np.expand_dims(x, axis=2)
 
-    output = []
+    output = None
     batch_size = 32
     for i in range(int(x.shape[0]/batch_size)):
         # Collect batch.
@@ -381,12 +382,10 @@ def run(model, signal_path, out_path, parameters):
         model_prediction = tf.reshape(model(input), [-1])
 
         # Append to output list.
-        output.append(model_prediction)
-
-    # Output is a list of n [128, out_channels] shape tensors. Concatenate them
-    # along axis 0 to get shape [128 * n, out_channels]
-    output = np.concatenate(output, axis=0)
-    print("output shape: ", output.shape)
+        if output is None:
+            output = model_prediction
+        else:
+            output = np.concatenate([output, model_prediction], axis=0)
 
     # Apply clipping and scale to int16 range.
     output = np.clip(output, -1.0, 1.0) * 32768.0
