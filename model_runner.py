@@ -178,29 +178,28 @@ def get_input_processed_pair(model, file_info, batch, total_batches):
 
     return x, y
 
+# @brief: Trains model for one mini-batch.
+def train_minibatch(model, input, ground_truth, mini_batch_size, i):
+    with tf.GradientTape(persistent=True) as tape:
+        model_prediction = model(input)
+        # TODO: squeezing here won't work for stereo!!
+        # Divide by mini batch size to compute average loss across batch.
+        loss = model.loss(model_prediction, tf.squeeze(ground_truth)) / mini_batch_size
+
+    if (i % 100 == 0):
+        print("Loss on mini-batch " + str(i) + ": " + str(loss))
+
+    gradients = tape.gradient(loss, model.trainable_variables)
+    model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
 # @brief: Trains model for one batch with inputs x and ground truth y.
 def train_batch(model, x, y, mini_batch_size=32):
-    # Loop through the batch splitting into mini batches.
-    for i in range(0, int(x.shape[0]/mini_batch_size)):
-        # Grab the input and corresponding ground truth batches.
-        batch_start = i*mini_batch_size
-        batch_end = (i+1)*mini_batch_size
-        input = x[batch_start:batch_end]
-        ground_truth = y[batch_start:batch_end]
-
-        # Compute the model prediction and the loss within the scope of the
-        # gradient tape.
-        with tf.GradientTape(persistent=True) as tape:
-            model_prediction = model(input)
-            # TODO: squeezing here won't work for stereo!!
-            # Divide by mini batch size to compute average loss across batch.
-            loss = model.loss(model_prediction, tf.squeeze(ground_truth)) / mini_batch_size
-
-        if (i % 100 == 0):
-            print("Loss on mini-batch " + str(i) + ": " + str(loss))
-
-        gradients = tape.gradient(loss, model.trainable_variables)
-        model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    # Loop through the batch splitting into mini batches. Use a list
+    # comprehension to speed things up.
+    _ = [train_minibatch(model, \
+        x[i*mini_batch_size:(i+1)*mini_batch_size], \
+        y[i*mini_batch_size:(i+1)*mini_batch_size], \
+        mini_batch_size, i) for i in range(0, int(x.shape[0]/mini_batch_size))]
 
 # @brief: Trains model for one epoch on files in data index index.
 def train_epoch(model, index, start=0.0, end=1.0):
