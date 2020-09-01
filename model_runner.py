@@ -124,7 +124,7 @@ def get_data_index(data_path, batches_per_file=50):
             data_index.append(FileInfo(local_path=processed_path, \
                 global_path=global_path, directory=data_path, \
                 batches_per_file=batches_per_file))
-    print(bcolors.OKGREEN + 'Done.')
+    print(bcolors.OKGREEN + 'Done.' + bcolors.ENDC)
     print('')
     return data_index
 
