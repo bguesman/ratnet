@@ -37,6 +37,7 @@ def parse_command_line():
     parser.add_argument('--epochs', type=int, default=1, help='specify how many epochs to train the model for')
     parser.add_argument('--learning_rate', type=float, default=1e-3, help='specify the learning rate of the optimizer')
     parser.add_argument('--frame_size', type=int, default=128, help='specify the frame size of the model')
+    parser.add_argument('--parameters', type=float, nargs='+', help='specify the parameters to use in run mode, separated by spaces')
 
     args = parser.parse_args()
 
@@ -65,6 +66,7 @@ def parse_command_line():
     print(bcolors.BOLD + 'epochs:' + bcolors.ENDC, args.epochs)
     print(bcolors.BOLD + 'learning rate:' + bcolors.ENDC, args.learning_rate)
     print(bcolors.BOLD + 'frame size:' + bcolors.ENDC, args.frame_size)
+    print(bcolors.BOLD + 'parameters:' + bcolors.ENDC, args.parameters)
     print('')
 
     return args
@@ -420,7 +422,7 @@ def main():
 
     # TODO: run the model.
     if (args.mode == 'RUN'):
-        run(model, args.signal_path, args.out_path, np.array([0.17]))
+        run(model, args.signal_path, args.out_path, np.array(args.parameters))
         print(bcolors.BOLD + bcolors.OKGREEN + "Wrote out result to", args.out_path, bcolors.ENDC)
 
 if __name__ == '__main__':
