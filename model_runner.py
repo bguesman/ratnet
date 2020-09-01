@@ -45,7 +45,7 @@ def parse_command_line():
         print("ERROR: in TRAIN mode, a train data path must be specified with --train_data_path")
         sys.exit()
 
-    if ((args.mode == 'TEST') and args.train_data_path == None):
+    if ((args.mode == 'TEST') and args.test_data_path == None):
         print("ERROR: in TEST mode, a test data path must be specified with --test_data_path")
         sys.exit()
 
@@ -288,10 +288,10 @@ def train(model, data_path, weight_store_path, epochs, start=0.0, end=1.0):
         # Do a test on a subset of the training data.
         print(bcolors.BOLD + "Computing test loss..." + bcolors.ENDC)
         test_width = 0.2
-        test_start = 0.1
+        test_start = 0.3
         loss = test(model, index=data_index, start=test_start, end=test_start+test_width)
         print(bcolors.BOLD + bcolors.OKGREEN + \
-            "Loss on training subset", str(test_start) + ", " + str(test_end), " for epoch " + str(i) + ":", \
+            "Loss on training subset", str(test_start) + ", " + str(test_start + test_width), " for epoch " + str(i) + ":", \
             loss, bcolors.ENDC)
         print('')
 
