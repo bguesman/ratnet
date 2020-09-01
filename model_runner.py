@@ -415,7 +415,7 @@ def main():
     # Test the model.
     if ((args.mode == 'TEST' or args.mode == 'TRAIN') and args.test_data_path is not None):
         print(bcolors.BOLD + bcolors.OKGREEN + "Computing loss on test data." + bcolors.ENDC)
-        loss = test(model, data_path=args.test_data_path)
+        loss = test(model, data_path=args.test_data_path, start=0.1, end=0.9)
         print(bcolors.BOLD + bcolors.OKGREEN + "Final loss on test data:", loss, bcolors.ENDC)
 
     # TODO: run the model.
