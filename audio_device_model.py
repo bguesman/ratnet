@@ -97,7 +97,7 @@ class AudioDeviceModel(tf.keras.Model):
             l2 = l2 / denominator
 
         # Compute dc offset loss.
-        N = tf.size(prediction)
+        N = tf.size(prediction, out_type=tf.dtypes.float32)
         dc_offset = (1.0/N) * tf.reduce_sum(hpf_prediction - hpf_ground_truth)
         dc_offset = dc_offset * dc_offset
         if (denominator != 0.0):
