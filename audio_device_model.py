@@ -90,7 +90,17 @@ class AudioDeviceModel(tf.keras.Model):
         hpf_prediction = hpf(prediction)
 
         # Compute normalized L2 loss.
-        if (tf.reduce_sum(hpf_ground_truth ** 2) < 0.0000000001):
-            # Avoid dividing by zero and spurious loss calculations.
-            return tf.reduce_sum((hpf_prediction - hpf_ground_truth) ** 2)
-        return tf.reduce_sum((hpf_prediction - hpf_ground_truth) ** 2) / tf.reduce_sum(hpf_ground_truth ** 2)
+        l2 = tf.reduce_sum((hpf_prediction - hpf_ground_truth) ** 2)
+        denominator = tf.reduce_sum(hpf_ground_truth ** 2)
+        if (denominator != 0.0):
+            # Avoid dividing by zero.
+            l2 = l2 / denominator
+
+        # Compute dc offset loss.
+        N = tf.size(prediction)
+        dc_offset = (1.0/N) * tf.reduce_sum(hpf_prediction - hpf_ground_truth)
+        dc_offset = dc_offset * dc_offset
+        if (denominator != 0.0):
+            dc_offset = (N * dc_offset) / denominator
+
+        return l2 + dc_offset
