@@ -352,7 +352,7 @@ def test(model, data_path=None, index=None, start=0.0, end=0.2):
 # specified output path.
 def run(model, signal_path, out_path, parameters):
     # Read in the data.
-    file_object = wavio.read(signal_path).data
+    file_object = wavio.read(signal_path)
     x = file_object.data
     bitdepth_divisor = float(2**((file_object.sampwidth * 8)- 1))
     # Pad the data.
