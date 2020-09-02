@@ -146,7 +146,9 @@ def get_input_processed_pair(model, file_info, batch, total_batches):
             clean_path = os.path.join(file_info.directory, possibly_clean_file)
 
     # Load both the clean and distorted files.
-    x = wavio.read(clean_path).data
+    file_object = wavio.read(clean_path)
+    bitdepth_divisor = float(2**(file_object.sampwidth*8 - 1))
+    x = fileobject.data
     y = wavio.read(file_info.global_path).data
 
     # Pad the data.
@@ -163,16 +165,14 @@ def get_input_processed_pair(model, file_info, batch, total_batches):
     x = x[start:end+model.R,...]
 
     # Normalize to [-1.0, 1.0]
-    y = y.astype(np.float32, order='C') / 32768.0
-    x = x.astype(np.float32, order='C') / 32768.0
+    y = y.astype(np.float32, order='C') / bitdepth_divisor
+    x = x.astype(np.float32, order='C') / bitdepth_divisor
 
     # determine shape of final output
     new_x_shape = (int((x.shape[0]-model.R)/model.frame_size), model.frame_size + model.R)
     new_y_shape = (int((y.shape[0])/model.frame_size), model.frame_size)
 
-    # Max: stride which gives a new view into array. I'm not sure if this "view" change will cause problems down the road
-    # If so we can just add a .copy() statement here, but I don't see why it would cause problems. The documentation does
-    # have warnings for this though.
+    # Max: stride which gives a new view into array. 
     x = np.lib.stride_tricks.as_strided(x, new_x_shape, (model.frame_size*4, 4))
     x = np.expand_dims(x, axis=2)
     y = np.lib.stride_tricks.as_strided(y, new_y_shape, (model.frame_size*4, 4))
@@ -352,11 +352,13 @@ def test(model, data_path=None, index=None, start=0.0, end=0.2):
 # specified output path.
 def run(model, signal_path, out_path, parameters):
     # Read in the data.
-    x = wavio.read(signal_path).data
+    file_object = wavio.read(signal_path).data
+    x = file_object.data
+    bitdepth_divisor = float(2**((file_object.sampwidth * 8)- 1))
     # Pad the data.
     x = np.pad(x, ((model.R, x.shape[0] % model.frame_size), (0, 0)), 'constant', constant_values=(0, 0))
     # Normalize to [-1.0, 1.0]
-    x = x.astype(np.float32, order='C') / 32768.0
+    x = x.astype(np.float32, order='C') / bitdepth_divisor
     # determine shape of final output
     new_x_shape = (int((x.shape[0]-model.R)/model.frame_size), model.frame_size + model.R)
     # Max: stride which gives a new view into array. I'm not sure if this "view" change will cause problems down the road
