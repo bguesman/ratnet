@@ -148,7 +148,7 @@ def get_input_processed_pair(model, file_info, batch, total_batches):
     # Load both the clean and distorted files.
     file_object = wavio.read(clean_path)
     bitdepth_divisor = float(2**(file_object.sampwidth*8 - 1))
-    x = fileobject.data
+    x = file_object.data
     y = wavio.read(file_info.global_path).data
 
     # Pad the data.
@@ -172,7 +172,7 @@ def get_input_processed_pair(model, file_info, batch, total_batches):
     new_x_shape = (int((x.shape[0]-model.R)/model.frame_size), model.frame_size + model.R)
     new_y_shape = (int((y.shape[0])/model.frame_size), model.frame_size)
 
-    # Max: stride which gives a new view into array. 
+    # Max: stride which gives a new view into array.
     x = np.lib.stride_tricks.as_strided(x, new_x_shape, (model.frame_size*4, 4))
     x = np.expand_dims(x, axis=2)
     y = np.lib.stride_tricks.as_strided(y, new_y_shape, (model.frame_size*4, 4))
