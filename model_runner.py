@@ -116,7 +116,7 @@ class FileInfo:
 
 # @brief: indexes files in data_path and returns a list of FileInfo structs.
 # @return: list of FileInfo structs for each file in directory data_path.
-def get_data_index(data_path, batches_per_file=500):
+def get_data_index(data_path, batches_per_file=50):
     print('')
     print(bcolors.OKGREEN + 'Building data index...' + bcolors.ENDC)
     data_index = []
