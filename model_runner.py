@@ -116,7 +116,7 @@ class FileInfo:
 
 # @brief: indexes files in data_path and returns a list of FileInfo structs.
 # @return: list of FileInfo structs for each file in directory data_path.
-def get_data_index(data_path, batches_per_file=50):
+def get_data_index(data_path, batches_per_file=500):
     print('')
     print(bcolors.OKGREEN + 'Building data index...' + bcolors.ENDC)
     data_index = []
@@ -417,7 +417,7 @@ def main():
     # Test the model.
     if ((args.mode == 'TEST' or args.mode == 'TRAIN') and args.test_data_path is not None):
         print(bcolors.BOLD + bcolors.OKGREEN + "Computing loss on test data." + bcolors.ENDC)
-        loss = test(model, data_path=args.test_data_path, start=0.1, end=0.9)
+        loss = test(model, data_path=args.test_data_path, start=0.0, end=1.0)
         print(bcolors.BOLD + bcolors.OKGREEN + "Final loss on test data:", loss, bcolors.ENDC)
 
     # TODO: run the model.
@@ -427,24 +427,3 @@ def main():
 
 if __name__ == '__main__':
    main()
-
-# def test_wav(model, test_inputs, out_path, batch_size=32):
-#     output = np.zeros((test_inputs.shape[0], 128))
-#     for i in range(0, int(test_inputs.shape[0]/batch_size)):
-#         # Grab the input and corresponding ground truth. TODO: we can batch
-#         # this if we want to make it faster.
-#         batch_start = i*batch_size
-#         batch_end = (i+1)*batch_size
-#         batched_input = test_inputs[batch_start:batch_end]
-#
-#         # Run the model on the input to get the predicted output.
-#         output[batch_start:batch_end] = model(batched_input)
-#
-#     # Flatten the output.
-#     output = np.reshape(output, (-1))
-#
-#     # Convert to wav.
-#     output = np.clip(output, -1.0, 1.0) * 32768.0
-#     output = output.astype(np.int16, order='C')
-#     wavio.write(out_path + "_wet.wav", output, 44100)
-#
