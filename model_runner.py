@@ -317,7 +317,7 @@ def test_batch(model, x, y, mini_batch_size=32):
         loss = model.loss(model_prediction, tf.squeeze(ground_truth)) / mini_batch_size
 
         total_loss += loss
-    return total_loss / float(int(x.shape[0]/mini_batch_size))
+    return total_loss / floor(x.shape[0]/mini_batch_size)
 
 # @brief: tests the model on data specified by data_path or
 # precomputed data index.
