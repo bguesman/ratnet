@@ -256,7 +256,7 @@ def train_epoch(model, index, start=0.0, end=1.0):
         train_batch(model, np.array(x, dtype=np.float32), np.array(y, dtype=np.float32))
 
         # Do a test.
-        if (b_i % 8 == 0):
+        if (b_i % 12 == 0):
             test_width = 0.3
             test_start = 0.1
             loss = test(model, index=index, start=test_start, end=test_start+test_width)
