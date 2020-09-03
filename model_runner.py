@@ -283,7 +283,7 @@ def train(model, data_path, weight_store_path, epochs, start=0.0, end=1.0):
         start_time = time.time()
         train_epoch(model, data_index, start=start, end=end)
         end_time = time.time()
-        print("Epoch took", (start_time - end_time) / 3600, "hours")
+        print("Epoch took", (end_time - start_time) / 3600, "hours")
         # Clear out the data index.
         clear_data_index(data_index)
         # Save the weights.
@@ -301,7 +301,7 @@ def train(model, data_path, weight_store_path, epochs, start=0.0, end=1.0):
         print(bcolors.BOLD + bcolors.OKGREEN + \
             "Loss on training set", str(test_start) + ", " + str(test_start + test_width), " for epoch " + str(i) + ":", \
             loss, bcolors.ENDC)
-        print("Test on training set took", (start_time - end_time) / 3600, "hours")
+        print("Test on training set took", (end_time - start_time) / 3600, "hours")
         print('')
 
     print(bcolors.BOLD + bcolors.OKGREEN + "DONE TRAINING" + bcolors.ENDC)
