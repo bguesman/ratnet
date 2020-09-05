@@ -28,14 +28,14 @@ def parse_command_line():
     # Use argparse for command line arguments.
     parser = argparse.ArgumentParser(description='Train, test, or run an audio device model.')
     parser.add_argument('mode', help='Mode to run the script in, one of <TRAIN, TEST, RUN>', type=str, choices=['TRAIN', 'TEST', 'RUN'])
-    parser.add_argument('--weight_store_path', type=str, default=None, help='specify directory to store weight checkpoints in')
-    parser.add_argument('--weight_load_path', type=str, default=None, help='specify directory to load weights from')
+    parser.add_argument('--model_store_path', type=str, default=None, help='specify directory to store model checkpoints in')
+    parser.add_argument('--model_load_path', type=str, default=None, help='specify directory to load model from')
     parser.add_argument('--train_data_path', type=str, default=None, help='specify directory that training data is in, if in TRAIN mode')
     parser.add_argument('--test_data_path', type=str, default=None, help='specify directory that test data is in, if in TRAIN or TEST mode')
     parser.add_argument('--signal_path', type=str, default=None, help='specify the path to the signal to process, if in RUN mode')
     parser.add_argument('--out_path', type=str, default=None, help='specify the path to output the processed signal to')
     parser.add_argument('--epochs', type=int, default=1, help='specify how many epochs to train the model for')
-    parser.add_argument('--learning_rate', type=float, default=1e-3, help='specify the learning rate of the optimizer')
+    parser.add_argument('--learning_rate', type=float, default=5e-4, help='specify the learning rate of the optimizer')
     parser.add_argument('--frame_size', type=int, default=128, help='specify the frame size of the model')
     parser.add_argument('--parameters', type=float, nargs='+', help='specify the parameters to use in run mode, separated by spaces')
 
@@ -57,8 +57,8 @@ def parse_command_line():
 
     print('')
     print(bcolors.OKGREEN + bcolors.BOLD + 'Running in', args.mode, "mode with parameters: " + bcolors.ENDC)
-    print(bcolors.BOLD + 'weight store path:' + bcolors.ENDC, args.weight_store_path)
-    print(bcolors.BOLD + 'weight load path:' + bcolors.ENDC, args.weight_load_path)
+    print(bcolors.BOLD + 'model store path:' + bcolors.ENDC, args.model_store_path)
+    print(bcolors.BOLD + 'model load path:' + bcolors.ENDC, args.model_load_path)
     print(bcolors.BOLD + 'train data path:' + bcolors.ENDC, args.train_data_path)
     print(bcolors.BOLD + 'test data path:' + bcolors.ENDC, args.test_data_path)
     print(bcolors.BOLD + 'signal path:' + bcolors.ENDC, args.signal_path)
@@ -76,13 +76,15 @@ def parse_command_line():
 def setup_model(args):
     print(bcolors.OKGREEN + "Creating model..." + bcolors.ENDC)
     print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
-    # Create model with specified learning rate and frame size.
-    model = AudioDeviceModel(learning_rate=args.learning_rate, \
-        frame_size=args.frame_size)
-    # Load weights if a path is specified.
-    if args.weight_load_path is not None:
-        print("Loading weights from path", args.weight_load_path + "...")
-        model.load_weights(args.weight_load_path)
+
+    # Load model if a path is specified.
+    if args.model_load_path is not None:
+        print("Loading model from path", args.model_load_path + "...")
+        model = keras.models.load_model(args.model_load_path)
+    else:
+        # Create model with specified learning rate and frame size.
+        model = AudioDeviceModel(learning_rate=args.learning_rate, \
+            frame_size=args.frame_size)
     print(bcolors.OKGREEN + "Done." + bcolors.ENDC)
     return model
 
@@ -269,7 +271,7 @@ def train_epoch(model, index, start=0.0, end=1.0):
 
 # @brief: Trains the model on the data in the folder data_path for specified
 # number of epochs. Checkpoints model after every epoch.
-def train(model, data_path, weight_store_path, epochs, start=0.0, end=1.0):
+def train(model, data_path, model_store_path, epochs, start=0.0, end=1.0):
     # Get the data index, which is a list of FileInfo objects that specify
     # the path to each file, the parameters associated with the file, and
     # a list of booleans specified whether or not each chunk in the file
@@ -286,10 +288,10 @@ def train(model, data_path, weight_store_path, epochs, start=0.0, end=1.0):
         print("Epoch took", (end_time - start_time) / 3600, "hours")
         # Clear out the data index.
         clear_data_index(data_index)
-        # Save the weights.
-        if weight_store_path is not None:
-            print(bcolors.OKGREEN + "Saving weights at path ", weight_store_path + "..." + bcolors.ENDC)
-            model.save_weights(weight_store_path + "_epoch_" + str(i), save_format='tf')
+        # Save the model.
+        if model_store_path is not None:
+            print(bcolors.OKGREEN + "Saving model at path ", model_store_path + "..." + bcolors.ENDC)
+            model.save(model_store_path + "_epoch_" + str(i), save_format='tf')
             print(bcolors.OKGREEN + "Done." + bcolors.ENDC)
         # Do a test on a subset of the training data.
         print(bcolors.BOLD + "Computing test loss..." + bcolors.ENDC)
@@ -397,8 +399,8 @@ def run(model, signal_path, out_path, parameters):
         else:
             output = np.concatenate([output, model_prediction], axis=0)
 
-    # Apply clipping and scale to int16 range.
-    output = np.clip(output, -1.0, 1.0) * 32768.0
+    # Scale to int16 range.
+    output = output * 32768.0
 
     # Convert to int-16 and write out.
     output = output.astype(np.int16, order='C')
@@ -418,10 +420,10 @@ def main():
     if (args.mode == 'TRAIN'):
         start = time.time()
         train(model, data_path=args.train_data_path, \
-            weight_store_path=args.weight_store_path,
+            model_store_path=args.model_store_path,
             epochs=args.epochs)
         end = time.time()
-        print("Training took", (start - end) / 3600, "hours")
+        print("Training took", (end - start) / 3600, "hours")
 
     # Test the model.
     if ((args.mode == 'TEST' or args.mode == 'TRAIN') and args.test_data_path is not None):

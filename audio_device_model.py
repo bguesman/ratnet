@@ -23,9 +23,9 @@ class AudioDeviceModel(tf.keras.Model):
         self.frame_size = frame_size
 
         # Set the parameters for each convolutional layer.
-        self.d = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+        self.d = [1, 2, 4, 8, 16, 32, 64, 128, 256, 1, 2, 4, 8, 16, 32, 64, 128, 256]
         self.k = [3 for _ in self.d]
-        self.chan = [8 for _ in self.d]
+        self.chan = [16 for _ in self.d]
 
         # Compute the receptive field.
         self.R = sum(d * (k - 1) for d, k in zip(self.d, self.k)) + 1
