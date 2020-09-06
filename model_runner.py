@@ -191,7 +191,15 @@ def train_minibatch(model, input, ground_truth, mini_batch_size, i):
         loss = model.loss(model_prediction, tf.squeeze(ground_truth)) / mini_batch_size
 
     if (i % 100 == 0):
-        print("Loss on mini-batch " + str(i) + ": " + str(loss))
+        if (loss < 1.0):
+            print("loss on mini-batch " + str(i) + ": " + str(loss))
+        else:
+            print(bcolors.WARNING + bcolors.BOLD + "Warning: loss uncharacteristically high: " + str(loss) + bcolors.ENDC)
+            print("magnitude of ground truth signal: ", tf.reduce_sum(ground_truth * ground_truth))
+            print("magnitude of prediction: ", tf.reduce_sum(model_prediction * model_prediction))
+            print("ground truth:", input[0])
+            print("prediction:", model_prediction[0])
+
 
     gradients = tape.gradient(loss, model.trainable_variables)
     model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))

@@ -22,6 +22,10 @@ class AudioDeviceModel(tf.keras.Model):
         # How many samples we are trying to predict at once.
         self.frame_size = frame_size
 
+        # Threshold for avoiding spurious loss calculations.
+        self.loss_divisor_threshold = 0.01
+        self.dc_loss_multiplier = 1
+
         # Set the parameters for each convolutional layer.
         self.d = [1, 2, 4, 8, 16, 32, 64, 128, 256, 1, 2, 4, 8, 16, 32, 64, 128, 256]
         self.k = [3 for _ in self.d]
@@ -84,6 +88,35 @@ class AudioDeviceModel(tf.keras.Model):
         # frames.
         return tf.squeeze(mixed)[:,-self.frame_size:]
 
+    def dc_loss(self, prediction, ground_truth):
+        # High pass both signals.
+        hpf_ground_truth = hpf(ground_truth)
+        hpf_prediction = hpf(prediction)
+
+        denominator = tf.reduce_sum(hpf_ground_truth ** 2)
+
+        # Compute dc offset loss.
+        N = tf.size(prediction, out_type=tf.dtypes.float32)
+        dc_offset = (1.0/N) * tf.reduce_sum(hpf_prediction - hpf_ground_truth)
+        dc_offset = dc_offset * dc_offset
+        if (denominator > self.loss_divisor_threshold):
+            dc_offset = (N * dc_offset) / denominator
+
+        return self.dc_loss_multiplier * dc_offset
+
+    def l2_loss(self, prediction, ground_truth):
+        # High pass both signals.
+        hpf_ground_truth = hpf(ground_truth)
+        hpf_prediction = hpf(prediction)
+
+        # Compute normalized L2 loss.
+        l2 = tf.reduce_sum((hpf_prediction - hpf_ground_truth) ** 2)
+        denominator = tf.reduce_sum(hpf_ground_truth ** 2)
+        if (denominator > self.loss_divisor_threshold):
+            # Avoid dividing by zero.
+            l2 = l2 / denominator
+        return l2
+
     def loss(self, prediction, ground_truth):
         # High pass both signals.
         hpf_ground_truth = hpf(ground_truth)
@@ -92,7 +125,7 @@ class AudioDeviceModel(tf.keras.Model):
         # Compute normalized L2 loss.
         l2 = tf.reduce_sum((hpf_prediction - hpf_ground_truth) ** 2)
         denominator = tf.reduce_sum(hpf_ground_truth ** 2)
-        if (denominator != 0.0):
+        if (denominator > self.loss_divisor_threshold):
             # Avoid dividing by zero.
             l2 = l2 / denominator
 
@@ -100,7 +133,7 @@ class AudioDeviceModel(tf.keras.Model):
         N = tf.size(prediction, out_type=tf.dtypes.float32)
         dc_offset = (1.0/N) * tf.reduce_sum(hpf_prediction - hpf_ground_truth)
         dc_offset = dc_offset * dc_offset
-        if (denominator != 0.0):
+        if (denominator > self.loss_divisor_threshold):
             dc_offset = (N * dc_offset) / denominator
 
-        return l2 + dc_offset
+        return l2 + self.dc_loss_multiplier * dc_offset
