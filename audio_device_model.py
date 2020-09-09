@@ -25,6 +25,11 @@ class AudioDeviceModel(tf.keras.Model):
         # Threshold for avoiding spurious loss calculations.
         self.loss_divisor_threshold = 0.01
         self.dc_loss_multiplier = 1
+        # Set number of signal channels
+        self.num_channels = 1
+
+        # Set num channels flag
+        self.channelSet = False
 
         # Set the parameters for each convolutional layer.
         self.d = [1, 2, 4, 8, 16, 32, 64, 128, 256, 1, 2, 4, 8, 16, 32, 64, 128, 256]
@@ -54,17 +59,14 @@ class AudioDeviceModel(tf.keras.Model):
         self.lr = tf.keras.layers.ReLU()
 
         # Linear mixer (convolutional layer with kernel size 1).
-        self.mixer = tf.keras.layers.Conv1D(filters=1, kernel_size=1,
-            padding="same")
+        self.mixer = tf.keras.layers.Conv1D(filters=self.num_channels, kernel_size=1, padding="same")
 
     @tf.function
     def call(self, input):
         # Accumulator variable that we'll use to implement skip connections.
         accumulator = None
-        # TODO: for now, the signal is always mono, so we can do this. But
-        # if we ever support stereo, this manual split won't work.
-        signal = input[:,:,0:1]
-        controls = input[:,:,1:]
+        signal = input[:,:,0:self.num_channels]
+        controls = input[:,:,self.num_channels:]
         for i in range(len(self.c)):
             # Apply convolutional layer i and non-linearity
             layer_output = self.c[i](tf.concat([signal, controls], axis=2))
@@ -79,14 +81,14 @@ class AudioDeviceModel(tf.keras.Model):
             if (i != len(self.c) - 1):
                 # Only compute input if there's a next layer to feed it to.
                 # Blend between the output and input via a 1x1 convolution.
-                signal = self.io[i](layer_output_nonlinear) + signal
+                signal = self.io[i](layer_output_nonlinear) + tf.expand_dims((tf.reduce_sum(signal, axis=2)/2), axis=2)
 
         # Concatenate along the channel dimension and apply the 1x1
         # convolution.
         mixed = self.mixer(accumulator)
         # Squeeze out the last few samples and take only the last frame_size
         # frames.
-        return tf.squeeze(mixed)[:,-self.frame_size:]
+        return mixed[:,-self.frame_size:, :]
 
     def dc_loss(self, prediction, ground_truth):
         # High pass both signals.

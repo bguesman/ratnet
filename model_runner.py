@@ -77,14 +77,15 @@ def setup_model(args):
     print(bcolors.OKGREEN + "Creating model..." + bcolors.ENDC)
     print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
+    # Create model with specified learning rate and frame size.
+    model = AudioDeviceModel(learning_rate=args.learning_rate, \
+        frame_size=args.frame_size)
+
     # Load model if a path is specified.
     if args.model_load_path is not None:
         print("Loading model from path", args.model_load_path + "...")
-        model = keras.models.load_model(args.model_load_path)
-    else:
-        # Create model with specified learning rate and frame size.
-        model = AudioDeviceModel(learning_rate=args.learning_rate, \
-            frame_size=args.frame_size)
+        model.load_weights(args.model_load_path)
+
     print(bcolors.OKGREEN + "Done." + bcolors.ENDC)
     return model
 
@@ -149,9 +150,14 @@ def get_input_processed_pair(model, file_info, batch, total_batches):
 
     # Load both the clean and distorted files.
     file_object = wavio.read(clean_path)
+
+    #Calculate bit depth for normalization
     bitdepth_divisor = float(2**(file_object.sampwidth*8 - 1))
     x = file_object.data
     y = wavio.read(file_info.global_path).data
+
+    assert (x.shape[1] == y.shape[1]), "Clean file has different number of channels than non-clean file."
+    num_channels = x.shape[1]
 
     # Pad the data.
     x = np.pad(x, ((0, x.shape[0] % model.frame_size), (0, 0)), 'constant', constant_values=(0, 0))
@@ -170,15 +176,36 @@ def get_input_processed_pair(model, file_info, batch, total_batches):
     y = y.astype(np.float32, order='C') / bitdepth_divisor
     x = x.astype(np.float32, order='C') / bitdepth_divisor
 
-    # determine shape of final output
-    new_x_shape = (int((x.shape[0]-model.R)/model.frame_size), model.frame_size + model.R)
-    new_y_shape = (int((y.shape[0])/model.frame_size), model.frame_size)
+    # Dimension 0 is the number of frame_sizes that fit in x[0] - receptive field samples
+    # Dimension 1 is framesize + receptive field (what is necessary for lookback on a given sample)
+    # Dimension 2 is channels
+    new_x_shape = (int((x.shape[0]-model.R)/model.frame_size), model.frame_size + model.R, num_channels)
 
-    # Max: stride which gives a new view into array.
-    x = np.lib.stride_tricks.as_strided(x, new_x_shape, (model.frame_size*4, 4))
-    x = np.expand_dims(x, axis=2)
-    y = np.lib.stride_tricks.as_strided(y, new_y_shape, (model.frame_size*4, 4))
-    y = np.expand_dims(y, axis=2)
+    # stride specifies how many bits we have to move in each dimension for new view
+    xstride = (model.frame_size*4*num_channels, 4*num_channels, 4) 
+    x = np.lib.stride_tricks.as_strided(x, new_x_shape, xstride)
+
+
+    # Dimension 0 is the number of frame_sizes that fit in y[0] samples
+    # Dimension 1 is framesize  (what is necessary for lookback on a given sample)
+    # Dimension 2 is left and right channels
+    new_y_shape = (int((y.shape[0])/model.frame_size), model.frame_size, num_channels)
+    ystride = (model.frame_size*4*num_channels, 4*num_channels, 4)
+    y = np.lib.stride_tricks.as_strided(y, new_y_shape, ystride)
+
+
+    ##OLD METHOD
+    # new_x_shape = (int((x.shape[0]-model.R)/model.frame_size), model.frame_size + model.R)
+    # new_y_shape = (int((y.shape[0])/model.frame_size), model.frame_size)
+
+    # # Max: stride which gives a new view into array. 
+    # x = np.lib.stride_tricks.as_strided(x[:,0], new_x_shape, (model.frame_size*4, 4)) 
+    # x = np.expand_dims(x, axis=2)
+    # y = np.lib.stride_tricks.as_strided(y[:,0], new_y_shape, (model.frame_size*4, 4))
+    # y = np.expand_dims(y, axis=2)
+
+    # print("xshape = " + str(x.shape))
+    # print("yshape = " + str(y.shape))
 
     return x, y
 
@@ -186,9 +213,7 @@ def get_input_processed_pair(model, file_info, batch, total_batches):
 def train_minibatch(model, input, ground_truth, mini_batch_size, i):
     with tf.GradientTape(persistent=True) as tape:
         model_prediction = model(input)
-        # TODO: squeezing here won't work for stereo!!
-        # Divide by mini batch size to compute average loss across batch.
-        loss = model.loss(model_prediction, tf.squeeze(ground_truth)) / mini_batch_size
+        loss = model.loss(model_prediction, ground_truth) / mini_batch_size
 
     if (i % 100 == 0):
         if (loss < 1.0):
@@ -234,6 +259,7 @@ def train_epoch(model, index, start=0.0, end=1.0):
         # Accumulate batch from each parameter file.
         x = None
         y = None
+        num_channels = None
         for f in range(len(index)):
             file_info = index[f]
             # Get the training pair of clean and distorted data for this file
@@ -241,8 +267,12 @@ def train_epoch(model, index, start=0.0, end=1.0):
             f_batch = (random_batch_order[f])[b_i]
             x_f, y_f = get_input_processed_pair(model, file_info, f_batch, len(file_info.batches_processed))
 
+            # Take note of the number of audio channels of our input
+            if not num_channels:
+                num_channels = x_f.shape[-1]
+
             # Tile parameters to be the same dimensions as x.
-            params = np.tile(file_info.parameters, x_f.shape)
+            params = np.tile(file_info.parameters, x_f.shape[:-1] + tuple([1]))
             # Stitch the parameters vector onto the clean data as new channels.
             x_f = np.concatenate([x_f, params], axis=2)
 
@@ -255,6 +285,11 @@ def train_epoch(model, index, start=0.0, end=1.0):
 
             # Set flag to true indicating that this was processed.
             file_info.batches_processed[f_batch] = True
+
+        # set model's channels to the number of channels we see in the input
+        if not model.channelSet:
+            model.num_channels = num_channels
+            print(bcolors.OKBLUE + "Set model's number of channels to", str(num_channels) + bcolors.ENDC)
 
         # Shuffle inputs and ground truth in the same order.
         shuffle_order = list(range(x.shape[0]))
@@ -299,7 +334,7 @@ def train(model, data_path, model_store_path, epochs, start=0.0, end=1.0):
         # Save the model.
         if model_store_path is not None:
             print(bcolors.OKGREEN + "Saving model at path ", model_store_path + "..." + bcolors.ENDC)
-            model.save(model_store_path + "_epoch_" + str(i), save_format='tf')
+            model.save_weights(model_store_path + "_epoch_" + str(i), save_format='tf')
             print(bcolors.OKGREEN + "Done." + bcolors.ENDC)
         # Do a test on a subset of the training data.
         print(bcolors.BOLD + "Computing test loss..." + bcolors.ENDC)
@@ -329,8 +364,7 @@ def test_batch(model, x, y, mini_batch_size=32):
         ground_truth = y[batch_start:batch_end]
 
         model_prediction = model(input)
-        # TODO: squeezing here won't work for stereo!!
-        loss = model.loss(model_prediction, tf.squeeze(ground_truth)) / mini_batch_size
+        loss = model.loss(model_prediction, ground_truth) / mini_batch_size
 
         total_loss += loss
     return total_loss / np.floor(x.shape[0]/mini_batch_size)
@@ -359,7 +393,6 @@ def test(model, data_path=None, index=None, start=0.0, end=0.2):
             # Stitch the parameters vector onto the clean data as new channels.
             x = np.array(np.concatenate([x, params], axis=2), dtype=np.float32)
 
-            # TODO: squeezing here won't work for stereo!!
             # Divide by the number of items to make sure this is average loss.
             total_loss += test_batch(model, x, y)
             i += 1.0
@@ -377,12 +410,13 @@ def run(model, signal_path, out_path, parameters):
     # Normalize to [-1.0, 1.0]
     x = x.astype(np.float32, order='C') / bitdepth_divisor
     # determine shape of final output
-    new_x_shape = (int((x.shape[0]-model.R)/model.frame_size), model.frame_size + model.R)
-    # Max: stride which gives a new view into array. I'm not sure if this "view" change will cause problems down the road
-    # If so we can just add a .copy() statement here, but I don't see why it would cause problems. The documentation does
-    # have warnings for this though.
-    x = np.lib.stride_tricks.as_strided(x, new_x_shape, (model.frame_size*4, 4))
-    x = np.expand_dims(x, axis=2)
+    new_x_shape = (int((x.shape[0]-model.R)/model.frame_size), model.frame_size + model.R, num_channels)
+
+    # stride specifies how many bits we have to move in each dimension for new view
+    xstride = (model.frame_size*4*num_channels, 4*num_channels, 4)
+
+    # apply new view so that we get suffient lookback data for each example
+    x = np.lib.stride_tricks.as_strided(x, new_x_shape, xstride)
 
     output = None
     batch_size = 32
