@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow as tf
 import wavio
 import argparse
+from audio_utils import resample
 from audio_device_model import AudioDeviceModel
 import time
 
@@ -104,14 +105,18 @@ class FileInfo:
         # Build parameter vector.
         self.parameters = np.zeros((len(parameter_splits)))
         print("Indexing file", bcolors.ITALICS + local_path + bcolors.ENDC, "with parameters:")
-        for i in range(len(parameter_splits)):
-            # Split on the equals sign.
-            sliced = parameter_splits[i].split('=')
-            # To the right of the equals sign is the parameter value.
-            val = float(sliced[1])
-            # To the left is the parameter name.
-            print(bcolors.BOLD + sliced[0] + ": " + bcolors.ENDC + str(val))
-            self.parameters[i] = val
+        if (len(parameter_splits) == 0):
+            self.parameters = None
+        else:
+            for i in range(len(parameter_splits)):
+                # Split on the equals sign.
+                sliced = parameter_splits[i].split('=')
+                if (len(sliced) > 1):
+                    # To the right of the equals sign is the parameter value.
+                    val = float(sliced[1])
+                    # To the left is the parameter name.
+                    print(bcolors.BOLD + sliced[0] + ": " + bcolors.ENDC + str(val))
+                    self.parameters[i] = val
 
         # Flags to specify which batches in this file have been processed
         # (trained on).
@@ -182,7 +187,7 @@ def get_input_processed_pair(model, file_info, batch, total_batches):
     new_x_shape = (int((x.shape[0]-model.R)/model.frame_size), model.frame_size + model.R, num_channels)
 
     # stride specifies how many bits we have to move in each dimension for new view
-    xstride = (model.frame_size*4*num_channels, 4*num_channels, 4) 
+    xstride = (model.frame_size*4*num_channels, 4*num_channels, 4)
     x = np.lib.stride_tricks.as_strided(x, new_x_shape, xstride)
 
 
@@ -192,20 +197,6 @@ def get_input_processed_pair(model, file_info, batch, total_batches):
     new_y_shape = (int((y.shape[0])/model.frame_size), model.frame_size, num_channels)
     ystride = (model.frame_size*4*num_channels, 4*num_channels, 4)
     y = np.lib.stride_tricks.as_strided(y, new_y_shape, ystride)
-
-
-    ##OLD METHOD
-    # new_x_shape = (int((x.shape[0]-model.R)/model.frame_size), model.frame_size + model.R)
-    # new_y_shape = (int((y.shape[0])/model.frame_size), model.frame_size)
-
-    # # Max: stride which gives a new view into array. 
-    # x = np.lib.stride_tricks.as_strided(x[:,0], new_x_shape, (model.frame_size*4, 4)) 
-    # x = np.expand_dims(x, axis=2)
-    # y = np.lib.stride_tricks.as_strided(y[:,0], new_y_shape, (model.frame_size*4, 4))
-    # y = np.expand_dims(y, axis=2)
-
-    # print("xshape = " + str(x.shape))
-    # print("yshape = " + str(y.shape))
 
     return x, y
 
@@ -222,8 +213,8 @@ def train_minibatch(model, input, ground_truth, mini_batch_size, i):
             print(bcolors.WARNING + bcolors.BOLD + "Warning: loss uncharacteristically high: " + str(loss) + bcolors.ENDC)
             print("magnitude of ground truth signal: ", tf.reduce_sum(ground_truth * ground_truth))
             print("magnitude of prediction: ", tf.reduce_sum(model_prediction * model_prediction))
-            print("ground truth:", input[0])
-            print("prediction:", model_prediction[0])
+            # print("ground truth:", input[0])
+            # print("prediction:", model_prediction[0])
 
 
     gradients = tape.gradient(loss, model.trainable_variables)
@@ -272,9 +263,10 @@ def train_epoch(model, index, start=0.0, end=1.0):
                 num_channels = x_f.shape[-1]
 
             # Tile parameters to be the same dimensions as x.
-            params = np.tile(file_info.parameters, x_f.shape[:-1] + tuple([1]))
-            # Stitch the parameters vector onto the clean data as new channels.
-            x_f = np.concatenate([x_f, params], axis=2)
+            if (file_info.parameters is not None):
+                params = np.tile(file_info.parameters, x_f.shape[:-1] + tuple([1]))
+                # Stitch the parameters vector onto the clean data as new channels.
+                x_f = np.concatenate([x_f, params], axis=2)
 
             if x is None:
                 x = x_f
@@ -296,6 +288,9 @@ def train_epoch(model, index, start=0.0, end=1.0):
         random.shuffle(shuffle_order)
         x = x[shuffle_order,:,:]
         y = y[shuffle_order,:,:]
+
+        print("x shape: ", x.shape)
+        print("y shape: ", y.shape)
 
         # Train the model on this batch.
         train_batch(model, np.array(x, dtype=np.float32), np.array(y, dtype=np.float32))
@@ -389,9 +384,10 @@ def test(model, data_path=None, index=None, start=0.0, end=0.2):
             x, y = get_input_processed_pair(model, file_info, b, len(file_info.batches_processed))
 
             # Tile parameters to be the same dimensions as x.
-            params = np.tile(file_info.parameters, x.shape)
-            # Stitch the parameters vector onto the clean data as new channels.
-            x = np.array(np.concatenate([x, params], axis=2), dtype=np.float32)
+            if (file_info.parameters is not None):
+                params = np.tile(file_info.parameters, x.shape[:-1] + tuple([1]))
+                # Stitch the parameters vector onto the clean data as new channels.
+                x = np.array(np.concatenate([x, params], axis=2), dtype=np.float32)
 
             # Divide by the number of items to make sure this is average loss.
             total_loss += test_batch(model, x, y)
@@ -408,8 +404,10 @@ def run(model, signal_path, out_path, parameters):
     # Pad the data.
     x = np.pad(x, ((model.R, x.shape[0] % model.frame_size), (0, 0)), 'constant', constant_values=(0, 0))
     # Normalize to [-1.0, 1.0]
-    x = x.astype(np.float32, order='C') / bitdepth_divisor
+    x = x.astype(np.float32) / bitdepth_divisor
     # determine shape of final output
+    print("input shape:", x.shape)
+    num_channels = x.shape[1]
     new_x_shape = (int((x.shape[0]-model.R)/model.frame_size), model.frame_size + model.R, num_channels)
 
     # stride specifies how many bits we have to move in each dimension for new view
@@ -427,13 +425,16 @@ def run(model, signal_path, out_path, parameters):
         input = x[batch_start:batch_end]
 
         # Tile parameters to be the same dimensions as x.
-        params = np.tile(parameters, input.shape)
-        # Stitch the parameters vector onto the clean data as new channels.
-        input = np.concatenate([input, params], axis=2)
+
+        if (parameters.ndim > 0):
+            params = np.tile(parameters, input.shape[:-1] + tuple([1]))
+            # Stitch the parameters vector onto the clean data as new channels.
+            input = np.concatenate([input, params], axis=2)
+
+        input = np.array(input, dtype=np.float32)
 
         # Run the model.
-        # TODO: reshape won't work for stereo.
-        model_prediction = tf.reshape(model(input), [-1])
+        model_prediction = model(input)
 
         # Append to output list.
         if output is None:
@@ -444,8 +445,11 @@ def run(model, signal_path, out_path, parameters):
     # Scale to int16 range.
     output = output * 32768.0
 
+    output = output.reshape(-1, output.shape[-1])
+    print("output shape: ", output.shape)
+
     # Convert to int-16 and write out.
-    output = output.astype(np.int16, order='C')
+    output = output.astype(np.int16)
     wavio.write(out_path, output, 44100)
 
 # @brief: main function.
