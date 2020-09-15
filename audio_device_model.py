@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-from audio_utils import hpf
+from audio_utils import hpf, parameterized_hpf
 
 """
 
@@ -25,8 +25,8 @@ class AudioDeviceModel(tf.keras.Model):
         # Threshold for avoiding spurious loss calculations.
         self.loss_divisor_threshold = 0.001
         self.dc_loss_multiplier = 1
-        # Set number of signal channels
-        self.num_channels = 2
+        # Set number of signal channels. HACK: this actually doesn't ever get set, have to set manually.
+        self.num_channels = 1
 
         # Set num channels flag
         self.channelSet = False
@@ -42,9 +42,10 @@ class AudioDeviceModel(tf.keras.Model):
         # self.k = [3 for _ in self.d]
         # self.chan = [16 for _ in self.d]
 
-        self.d = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+        # self.d = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+        self.d = [1, 2, 4, 8, 16, 32, 64, 128, 256, 1, 2, 4, 8, 16, 32, 64, 128, 256]
         self.k = [3 for _ in self.d]
-        self.chan = [8 for _ in self.d]
+        self.chan = [16 for _ in self.d]
 
         # Compute the receptive field.
         self.R = sum(d * (k - 1) for d, k in zip(self.d, self.k)) + 1
@@ -59,21 +60,21 @@ class AudioDeviceModel(tf.keras.Model):
         for i in range(len(self.d)):
             # Convolutional layer.
             self.linear_c.append(tf.keras.layers.Conv1D(filters=self.chan[i],
-                kernel_size=self.k[i], dilation_rate=self.d[i], padding="causal"))
+                kernel_size=self.k[i], dilation_rate=self.d[i], padding="causal", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01)))
             self.nonlinear_c.append(tf.keras.layers.Conv1D(filters=self.chan[i],
-                kernel_size=self.k[i], dilation_rate=self.d[i], padding="causal"))
+                kernel_size=self.k[i], dilation_rate=self.d[i], padding="causal", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01)))
 
             if (i != len(self.d) - 1):
                 self.linear_io.append(tf.keras.layers.Conv1D(filters=self.chan[i],
-                    kernel_size=1, padding="causal"))
+                    kernel_size=1, padding="causal", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01)))
                 self.nonlinear_io.append(tf.keras.layers.Conv1D(filters=self.chan[i],
-                    kernel_size=1, padding="causal"))
+                    kernel_size=1, padding="causal", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01)))
 
         # Nonlinearity.
         self.lr = tf.keras.layers.ReLU()
 
         # Linear mixer (convolutional layer with kernel size 1).
-        self.mixer = tf.keras.layers.Conv1D(filters=self.num_channels, kernel_size=1, padding="same")
+        self.mixer = tf.keras.layers.Conv1D(filters=self.num_channels, kernel_size=1, padding="same", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01))
 
     @tf.function
     def call(self, input):
@@ -81,7 +82,7 @@ class AudioDeviceModel(tf.keras.Model):
         nonlinear_signal = input[:,:,0:self.num_channels]
         linear_signal = input[:,:,0:self.num_channels]
         controls = input[:,:,self.num_channels:]
-        for i in range(len(self.linear_c)):
+        for i in range(len(self.nonlinear_c)):
             # Apply convolutional layer to linear signal for full linear path.
             linear_output = self.linear_c[i](tf.concat([linear_signal, controls], axis=2))
 
@@ -96,10 +97,12 @@ class AudioDeviceModel(tf.keras.Model):
             # "skip connection".
             if accumulator is None:
                 accumulator = tf.concat([linear_output, linearly_shaped_output, nonlinear_output], axis=2)
+                # accumulator = nonlinear_output
             else:
                 accumulator = tf.concat([accumulator, linear_output, linearly_shaped_output, nonlinear_output], axis=2)
+                # accumulator = tf.concat([accumulator, nonlinear_output], axis=2)
 
-            if (i != len(self.linear_c) - 1):
+            if (i != len(self.nonlinear_c) - 1):
                 # Only compute input if there's a next layer to feed it to.
                 # Input to the next layer is linear combination of
                 # input to this layer and output of last layer.
@@ -148,10 +151,9 @@ class AudioDeviceModel(tf.keras.Model):
 
     def loss(self, prediction, ground_truth):
         # High pass both signals.
-        # hpf_ground_truth = hpf(ground_truth)
-        # hpf_prediction = hpf(prediction)
-        hpf_ground_truth = ground_truth
-        hpf_prediction = prediction
+        hpf_ground_truth = hpf(ground_truth)
+        hpf_prediction = hpf(prediction)
+
 
         # Compute normalized L2 loss.
         l2 = tf.reduce_sum((hpf_prediction - hpf_ground_truth) ** 2)

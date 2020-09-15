@@ -434,7 +434,8 @@ def run(model, signal_path, out_path, parameters):
         input = np.array(input, dtype=np.float32)
 
         # Run the model.
-        model_prediction = model(input)
+        model_prediction = model(input)[...,0:1] # HACK: for some reason model seems to be stereo.
+
 
         # Append to output list.
         if output is None:

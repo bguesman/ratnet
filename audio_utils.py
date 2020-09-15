@@ -8,6 +8,12 @@ def hpf(signal):
     hpf_signal = signal[...,1:,:] - 0.95*signal[...,:-1,:]
     return tf.concat([hpf_signal, signal[:,0:1,:]], 1)
 
+@tf.function
+def parameterized_hpf(signal, cutoff):
+    # Signal's dimensions are minibatch X receptive field X channels
+    hpf_signal = signal[...,1:,:] - cutoff*signal[...,:-1,:]
+    return tf.concat([hpf_signal, signal[:,0:1,:]], 1)
+
 def resample(signal, start_sr, target_sr):
     batch_size = signal.shape[0]
     signal = tf.reshape(signal, [-1, signal.shape[-1]])
